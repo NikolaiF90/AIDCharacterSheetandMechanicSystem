@@ -1,3 +1,10 @@
+// Edit this field as your preference
+const CSMS_CONFIG =
+{
+  STAT_MAX: 50,   // Maximum value for any stats
+  STAT_MIN: 1,    // Minimum value for any stats
+}
+
 // ============================================
 // NotifyThem - An AID dynamic notification and logging system made by programmer for programmer
 // v1.0.0 by PrinceF90
@@ -13,7 +20,7 @@
 const NOTIFY_CONFIG = 
 {
   NOTIFICATION_HEADER: "!NOTIFICATION!",   // Header message
-  DEBUG_MODE: true    // For developer only
+  DEBUG_MODE: true,   // For developer only
 }
 
 function initNotify ()
@@ -62,15 +69,11 @@ function resetNotification()
 
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.0.0 by PrinceF90
+// v1.1.0 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
 
-const CSMS_CONFIG =
-{
-  // Nothing here yet
-}
 
 function CSMS(hook)
 {
@@ -96,6 +99,26 @@ function CSMS(hook)
   function statMod(score)
   {
     return formatMod(getModifier(score));
+  }
+
+  // Helper - validate and fallback
+  function safeInt(value, fallback, label)
+  {
+    const parsed = parseInt(value);
+    
+    if (isNaN(parsed))
+    {
+      errors.push(`${label}: "$${value}" is not a number. Kept ${fallback}.`);
+      return fallback;
+    }
+
+    if (parsed < CSMS_CONFIG.STAT_MIN || parsed > CSMS_CONFIG.STAT_MAX)
+    {
+      errors.push(`${label}: ${parsed} out of range (${CSMS_CONFIG.STAT_MIN}-${CSMS_CONFIG.STAT_MAX}). Kept ${fallback}.`);
+      return fallback;
+    }
+    
+    return parsed;
   }
 
   // ==================
@@ -135,6 +158,7 @@ function CSMS(hook)
     };
   }
 
+  // Find any character from global namespace by name
   function findCharacter(name)
   {
     return state.characters.find(
@@ -142,6 +166,7 @@ function CSMS(hook)
     );
   }
 
+  // Find and return player from list of characters in global namespace
   function getPlayer()
   {
     return state.characters.find(c => c.isPlayer === true);
@@ -150,6 +175,71 @@ function CSMS(hook)
   // ==================
   // STORY CARD
   // ==================
+
+  // Update character state data by value from CS
+  function parseCharacterCard(character)
+  {
+    const c = character;
+    const card = storyCards.find(card => card.title === `📋 ${c.name}`);
+    if (!card) return;
+
+    // seperate by lines
+    const lines = card.entry.split("\n");
+    // container for invalid value
+    const errors = [];
+    
+    // Line 1 - Name: PrinceF90 | Level: 0 | XP: 0
+    const line1 = lines[0]?.match(/\w+:\s*(.+?)\s*\|\s*\w+:\s*(\d+)\s*\|\s*\w+:\s*(\d+)/i);
+    if (line1)
+    {
+      c.name = line1[1].trim() || c.name;
+      c.level = safeInt(line1[2], c.level, "Level");
+      c.xp = safeInt(line1[3], c.xp, "XP");
+    }
+
+    // Line 2 - HP: 10/10 | AC: 10 | Speed: 30ft
+    const line2 = lines[1]?.match(/\w+:\s*(\d+)\/(\d+)\s*\|\s*\w+:\s*(\d+)\s*\|\s*\w+:\s*(\d+)/i);
+    if (line2)
+    {
+      c.hp.current = safeInt(line2[1], c.hp.current, "HP Current");
+      c.hp.max = safeInt(line2[2], c.hp.max, "HP Max");
+      c.ac = safeInt(line2[3], c.ac, "AC");
+      c.speed = safeInt(line2[4], c.speed, "Speed");
+    }
+
+    // Line 3 - Proficiency: +2
+    const line3 = lines[2]?.match(/\w+:\s*([+-]?\d+)/i);
+    if (line3)
+    {
+      c.proficiencyBonus = safeInt(line3[1], c.proficiencyBonus, "Proficiency");
+    }
+
+    // Line 5 — str: 10 (+0)  dex: 10 (+0)  con: 10 (+0)
+    const line5 = lines[4]?.match(/\w+:\s*(\d+)\s*\(.*?\)\s*\w+:\s*(\d+)\s*\(.*?\)\s*\w+:\s*(\d+)/i);
+    if (line5)
+    {
+      c.stats.str = safeInt(line5[1], c.stats.str, "STR");
+      c.stats.dex = safeInt(line5[2], c.stats.dex, "DEX");
+      c.stats.con = safeInt(line5[3], c.stats.con, "CON");
+    }
+
+    // Line 6 — int: 10 (+0)  wis: 10 (+0)  cha: 10 (+0)
+    const line6 = lines[5]?.match(/\w+:\s*(\d+)\s*\(.*?\)\s*\w+:\s*(\d+)\s*\(.*?\)\s*\w+:\s*(\d+)/i);
+    if (line6)
+    {
+      c.stats.int = safeInt(line6[1], c.stats.int, "INT");
+      c.stats.wis = safeInt(line6[2], c.stats.wis, "WIS");
+      c.stats.cha = safeInt(line6[3], c.stats.cha, "CHA");
+    }
+
+    // Notify of any errors
+    if (errors.length > 0)
+    {
+      notify(`Card sync errors for ${c.name}:\n- ${errors.join("\n- ")}`, `sync errors: ${errors.join(" | ")}`);
+    }
+
+    updateCharacterCard(c);
+  }
 
   function updateCharacterCard(character)
   {
@@ -242,6 +332,32 @@ function CSMS(hook)
     return `${character.name} checks their status.`;
   }
 
+  // Manually sync CS to character state data by name
+  function handleSync(param)
+  {
+    const name = param;
+    let c;
+
+    if (name)
+    {
+      c = findCharacter(name);
+      if (!character)
+      {
+        return `No character named ${name} found.`;
+      }
+    } else
+    {
+      c = getPlayer();
+      if (!c)
+      {
+        return `No player character found.`;
+      }
+    }
+
+    parseCharacterCard(c);
+    return `${c.name}'s character sheet has been synced.`;
+  }
+
   function handleReset(param)
   {
     const name = param;
@@ -312,9 +428,10 @@ function CSMS(hook)
     {
       case "create": return handleCreate(param);
       case "stats":  return handleStats(param);
+      case "sync": return handleSync(param);
       case "reset":  return handleReset(param);
       case "cleanup": return handleCleanup();
-      default:       return `Unknown CSMS command. Available: /csms create [name], /csms stats [name], /csms reset [name], /csms reset`;
+      default:       return `Unknown CSMS command. Available: /csms create [name], /csms stats [name], /csms sync [name], /csms reset [name], /csms reset, /csms cleanup`;
     }
   }
 
@@ -335,7 +452,10 @@ function CSMS(hook)
 
   if (hook === "context")
   {
-    // Phase 2+ will use this
+    state.characters.forEach(c =>
+    {
+      parseCharacterCard(c);
+    });
   }
 
   if (hook === "output")
