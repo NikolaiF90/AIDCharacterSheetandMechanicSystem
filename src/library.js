@@ -101,26 +101,6 @@ function CSMS(hook)
     return formatMod(getModifier(score));
   }
 
-  // Helper - validate and fallback
-  function safeInt(value, fallback, label)
-  {
-    const parsed = parseInt(value);
-    
-    if (isNaN(parsed))
-    {
-      errors.push(`${label}: "$${value}" is not a number. Kept ${fallback}.`);
-      return fallback;
-    }
-
-    if (parsed < CSMS_CONFIG.STAT_MIN || parsed > CSMS_CONFIG.STAT_MAX)
-    {
-      errors.push(`${label}: ${parsed} out of range (${CSMS_CONFIG.STAT_MIN}-${CSMS_CONFIG.STAT_MAX}). Kept ${fallback}.`);
-      return fallback;
-    }
-    
-    return parsed;
-  }
-
   // ==================
   // INITIALIZATION
   // ==================
@@ -187,7 +167,27 @@ function CSMS(hook)
     const lines = card.entry.split("\n");
     // container for invalid value
     const errors = [];
-    
+
+    // Helper - validate and fallback
+    function safeInt(value, fallback, label)
+    {
+      const parsed = parseInt(value);
+      
+      if (isNaN(parsed))
+      {
+        errors.push(`${label}: "$${value}" is not a number. Kept ${fallback}.`);
+        return fallback;
+      }
+
+      if (parsed < CSMS_CONFIG.STAT_MIN || parsed > CSMS_CONFIG.STAT_MAX)
+      {
+        errors.push(`${label}: ${parsed} out of range (${CSMS_CONFIG.STAT_MIN}-${CSMS_CONFIG.STAT_MAX}). Kept ${fallback}.`);
+        return fallback;
+      }
+      
+      return parsed;
+    }
+     
     // Line 1 - Name: PrinceF90 | Level: 0 | XP: 0
     const line1 = lines[0]?.match(/\w+:\s*(.+?)\s*\|\s*\w+:\s*(\d+)\s*\|\s*\w+:\s*(\d+)/i);
     if (line1)
