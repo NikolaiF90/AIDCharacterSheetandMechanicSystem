@@ -175,7 +175,7 @@ function CSMS(hook)
       
       if (isNaN(parsed))
       {
-        errors.push(`${label}: "$${value}" is not a number. Kept ${fallback}.`);
+        errors.push(`${label}: "${value}" is not a number. Kept ${fallback}.`);
         return fallback;
       }
 
@@ -187,9 +187,9 @@ function CSMS(hook)
       
       return parsed;
     }
-     
+
     // Line 1 - Name: PrinceF90 | Level: 0 | XP: 0
-    const line1 = lines[0]?.match(/\w+:\s*(.+?)\s*\|\s*\w+:\s*(\d+)\s*\|\s*\w+:\s*(\d+)/i);
+    const line1 = lines[0]?.match(/\w+:\s*(.+?)\s*\|\s*\w+:\s*(\S+)\s*\|\s*\w+:\s*(\S+)/i);
     if (line1)
     {
       c.name = line1[1].trim() || c.name;
@@ -198,8 +198,8 @@ function CSMS(hook)
     }
 
     // Line 2 - HP: 10/10 | AC: 10 | Speed: 30ft
-    const line2 = lines[1]?.match(/\w+:\s*(\d+)\/(\d+)\s*\|\s*\w+:\s*(\d+)\s*\|\s*\w+:\s*(\d+)/i);
-    if (line2)
+    const line2 = lines[1]?.match(/\w+:\s*(\S+)\/(\S+)\s*\|\s*\w+:\s*(\S+)\s*\|\s*\w+:\s*(\S+)/i);
+    if (line2 && c.hp)
     {
       c.hp.current = safeInt(line2[1], c.hp.current, "HP Current");
       c.hp.max = safeInt(line2[2], c.hp.max, "HP Max");
@@ -208,14 +208,14 @@ function CSMS(hook)
     }
 
     // Line 3 - Proficiency: +2
-    const line3 = lines[2]?.match(/\w+:\s*([+-]?\d+)/i);
+    const line3 = lines[2]?.match(/\w+:\s*(\S+)/i);
     if (line3)
     {
       c.proficiencyBonus = safeInt(line3[1], c.proficiencyBonus, "Proficiency");
     }
 
     // Line 5 — str: 10 (+0)  dex: 10 (+0)  con: 10 (+0)
-    const line5 = lines[4]?.match(/\w+:\s*(\d+)\s*\(.*?\)\s*\w+:\s*(\d+)\s*\(.*?\)\s*\w+:\s*(\d+)/i);
+    const line5 = lines[4]?.match(/\w+:\s*(\S+)\s*\(.*?\)\s*\w+:\s*(\S+)\s*\(.*?\)\s*\w+:\s*(\S+)/i);
     if (line5)
     {
       c.stats.str = safeInt(line5[1], c.stats.str, "STR");
@@ -224,7 +224,7 @@ function CSMS(hook)
     }
 
     // Line 6 — int: 10 (+0)  wis: 10 (+0)  cha: 10 (+0)
-    const line6 = lines[5]?.match(/\w+:\s*(\d+)\s*\(.*?\)\s*\w+:\s*(\d+)\s*\(.*?\)\s*\w+:\s*(\d+)/i);
+    const line6 = lines[5]?.match(/\w+:\s*(\S+)\s*\(.*?\)\s*\w+:\s*(\S+)\s*\(.*?\)\s*\w+:\s*(\S+)/i);
     if (line6)
     {
       c.stats.int = safeInt(line6[1], c.stats.int, "INT");
@@ -341,7 +341,7 @@ function CSMS(hook)
     if (name)
     {
       c = findCharacter(name);
-      if (!character)
+      if (!c)
       {
         return `No character named ${name} found.`;
       }
