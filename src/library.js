@@ -123,6 +123,7 @@ function CSMS(hook)
       ac: 10,
       speed: 30,
       proficiencyBonus: 2,
+      canCastSpell: false,
       stats: {
         str: 10,
         dex: 10,
