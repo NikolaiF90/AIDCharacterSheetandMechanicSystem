@@ -138,6 +138,6 @@ CHANGELOG.md    — Version history
 
 ## Context Recovery (for new Claude sessions)
 Paste this at start of conversation:
-*"Here's our AID CSMS project: [raw GitHub URL of library.js] and [raw GitHub URL of NOTES.md]. Read both and let's continue from Phase 1.5."*
+*"Here's our AID CSMS project: [library.js](https://github.com/NikolaiF90/-AID-Character-Sheet-and-Mechanic-System/blob/main/src/library.js) and (Notes.MD)[https://github.com/NikolaiF90/-AID-Character-Sheet-and-Mechanic-System/blob/main/assets/Notes.MD]. Read both and let's continue from Phase 1.5."*
 
 Claude will fetch both files and be fully up to speed.
