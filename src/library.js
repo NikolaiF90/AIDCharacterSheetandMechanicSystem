@@ -285,7 +285,7 @@ function CSMS(hook)
       return !findCharacter(cardName);
     });
 
-    if (orphaned.lenght === 0)
+    if (orphaned.length === 0)
     {
       return `No orphaned character sheet found.`;
     }
@@ -295,7 +295,7 @@ function CSMS(hook)
       storyCards.splice(storyCards.indexOf(card), 1);
     });
 
-    return `Cleaned up ${orphaned.lenght} orphaned character sheet(s).`;
+    return `Cleaned up ${orphaned.length} orphaned character sheet(s).`;
   }
 
   function parseCommand(cText)
