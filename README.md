@@ -76,20 +76,20 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 2. Add to **Input** tab:
 ```js
 CSMS("input");
-const modifier = (text) => { return { text }; };
-modifier(text);
+const modifier = (text) => { return { text } };
+modifier(text)
 ```
 3. Add to **Context** tab:
 ```js
 CSMS("context");
-const modifier = (text) => { return { text, stop }; };
-modifier(text);
+const modifier = (text) => { return { text, stop } };
+modifier(text)
 ```
 4. Add to **Output** tab:
 ```js
 CSMS("output");
-const modifier = (text) => { return { text }; };
-modifier(text);
+const modifier = (text) => { return { text } };
+modifier(text)
 ```
 
 ---
