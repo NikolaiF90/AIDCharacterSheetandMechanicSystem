@@ -72,7 +72,7 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 
 ## Installation
 
-1. Copy `library.js` contents into your scenario's **Library** tab
+1. Copy [library.js](src/library.js) contents into your scenario's **Library** tab
 2. Add to **Input** tab:
 ```js
 CSMS("input");
