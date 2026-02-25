@@ -3,6 +3,8 @@
 
 > *"The AI handles judgment. The script handles consistency."*
 
+![Cover Art](assets/images/CSMS_CoverArt.png)
+
 ---
 
 ## What is CSMS?
