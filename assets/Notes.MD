@@ -138,6 +138,6 @@ CHANGELOG.md    — Version history
 
 ## Context Recovery (for new Claude sessions)
 Paste this at start of conversation:
-*"Here's our AID CSMS project: [AID Character Sheet and Mechanic System(CSMS)](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem), [library.js](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/src/Library.js) and [Notes.MD](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/assets/Notes.MD). For reference, heres [AI Dungeon official scripting site](https://help.aidungeon.com/scripting), though it could be outdated. Read all and let's continue from Phase 1.5."*
+*"Here's our AID CSMS project: [AID Character Sheet and Mechanic System(CSMS)](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem), [library.js](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/src/library.js) and [Notes.MD](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/assets/Notes.MD). For reference, heres [AI Dungeon official scripting site](https://help.aidungeon.com/scripting), though it could be outdated. Read all and let's continue from Phase 1.5."*
 
 Claude will fetch both files and be fully up to speed.
