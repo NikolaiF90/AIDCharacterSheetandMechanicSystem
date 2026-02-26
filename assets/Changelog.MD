@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.3.0 — Phase 2 Complete
+*February 2026*
+
+### Added
+- `isCharacterSheet(card, name)` — identifies valid CS cards by `📋` emoji OR `csms_cs_` key
+- `getTaggedCards()` — scans storyCards for `AUTO_GENERATION_TAG` prefix
+- `getTaggedName(card)` — extracts clean name from tagged card, strips emoji and tag
+- `processTaggedCards()` — full tag detection and branching logic, runs in context hook
+- `generateNarrativeSheet()` — output hook intercepts AI stat response, creates sheet silently
+- `state.csmsPending` — single-item generation queue, one character at a time
+- `AUTO_GENERATION_TAG: "[CSMS]"` — configurable tag in `CSMS_CONFIG`
+- Three-branch tag processing — handles separate CS / tagged card is CS / no CS cases
+- Stats stripped from visible output after generation — player never sees raw stat string
+- Tag removed from original card title after sheet generated
+
+### Fixed
+- Empty string guard in multiplayer auto-create — prevents blank sheets from empty `info.characters` entries
+
+---
+
 ## v1.2.0 — Phase 1.5 Complete
 *February 2026*
 
