@@ -48,36 +48,41 @@
 - [x] `canCastSpell: false` flag — added to `initCharacter()`
 - [x] `STAT_MIN` and `STAT_MAX` in `CSMS_CONFIG`
 - [x] `BANNED_NAMES` — prevents invalid names like "You", "Adventurer"
+- [x] Empty string guard — prevents blank auto-create from empty `info.characters` entries
 - [x] `injectActiveCharacters()` — compact sheet injection into frontMemory
 - [x] `LOOKBACK_ACTIONS` and `INJECTED_SHEET_MAX` in `CSMS_CONFIG`
 - [x] Multiplayer auto-create — sheets created on join via `info.characters`
 - [x] `getActivePlayer()` — detects active player from input text in multiplayer
 - [x] `isMultiplayerCharacter` flag — protects NPCs from multiplayer sync
 - [x] `syncMultiplayerCharacters()` — removes sheets for players who left or renamed
-- [x] SC keyword placeholder `csms_cs_${name}` — AC-safe card triggers
-
-### Architecture additions
-- Context hook now handles: parseCharacterCard + injectActiveCharacters + syncMultiplayerCharacters
-- `state.memory.frontMemory` used for compact character data injection
-- `info.characters` is array of strings (not objects — docs are wrong)
+- [x] SC keyword placeholder `csms_cs_${name}` — AC-safe card trigger keys
 
 ---
 
-## Phase 2 — Tag System 📋 PLANNED
+## Phase 2 — Tag System ✅ COMPLETE
 
 ### Goals
 - `[CSMS] CharacterName` tag on existing story cards
-- Lazy load — only generate sheet when name appears in context
+- Lazy load — only generate sheet when name appears in recent history
 - AI reads card entry, determines appropriate stats
 - Remove tag from original card after sheet generated
 
-### Tasks
-- [ ] Scan storyCards for `[CSMS]` prefix on each context hook run
-- [ ] Check if tagged character name appears in recent history
-- [ ] If triggered — inject AI prompt via frontMemory to determine stats from card entry
-- [ ] Parse AI response for stat values
-- [ ] Generate character sheet with those stats
-- [ ] Remove `[CSMS]` prefix from original card title
+### Completed
+- [x] `getTaggedCards()` — scans storyCards for AUTO_GENERATION_TAG prefix
+- [x] `getTaggedName()` — extracts clean name from tagged card title, strips emoji too
+- [x] `isCharacterSheet()` — identifies valid CS cards by emoji OR csms_cs_ key
+- [x] `processTaggedCards()` — full detection and branching logic in context hook
+- [x] `generateNarrativeSheet()` — output hook intercepts AI stat response
+- [x] Three-branch logic — separate CS exists / tagged card IS CS / no CS anywhere
+- [x] `state.csmsPending` — single-item queue for AI generation, one character at a time
+- [x] Stats stripped from visible output — player never sees raw stat response
+- [x] Tag removed from original card after sheet generated
+- [x] `AUTO_GENERATION_TAG` in `CSMS_CONFIG` — world maker configurable
+- [x] Case-insensitive tag matching
+
+### Known Limitations
+- New card requires one extra action to appear in UI — AID rendering quirk, not a bug
+- Multiple tagged cards process one per action — intentional, AI generation is sequential
 
 ---
 
@@ -136,7 +141,7 @@
 ## Backlog / Future Ideas
 
 - NotifyThem as standalone published system
-- NotifyThem story card (entry = player controls, notes = notification log)
+- PE template integration — read player-filled Plot Essentials template, auto-generate sheet
 - `/csms setplayer [name]` — reassign who is the player character
 - `/csms debug [on/off]` — player toggleable debug mode
 - Inventory system
