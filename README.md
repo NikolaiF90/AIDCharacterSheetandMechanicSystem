@@ -44,6 +44,7 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 - Compact character data injection into AI context — efficient even with large parties
 - Multiplayer compatible — auto-creates sheets on join, detects active player, syncs on name change
 - Banned names protection — prevents invalid character names
+- **Tag system** — add `[CSMS]` to any story card title, AI reads the entry and auto-generates a character sheet when that character appears in the story
 - D&D 5e stat foundation (STR, DEX, CON, INT, WIS, CHA)
 - Designed for compatibility with Inner Self, Auto-Cards, and other popular systems
 
@@ -51,7 +52,6 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 
 ## Planned Features
 
-- Tag-based auto character sheet generation `[CSMS] CharacterName`
 - Dice roll system with stat modifiers
 - Damage and HP tracking
 - Feat system (natural language, AI-interpreted)
@@ -69,6 +69,27 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 /csms reset            — Remove all characters
 /csms cleanup          — Remove orphaned story cards
 ```
+
+---
+
+## Tag System
+
+The tag system lets world makers pre-define characters without manually assigning stats. Just add `[CSMS]` to the beginning of any story card title:
+
+```
+Title:  [CSMS] Mira
+Entry:  Mira is a battle-hardened mercenary with years of
+        combat experience. She's fast, strong, and ruthless.
+        Her body is covered in scars from countless fights.
+```
+
+When Mira's name appears in the story, CSMS automatically:
+1. Reads the card entry
+2. Has the AI determine appropriate stats from the description
+3. Creates a proper character sheet
+4. Removes the `[CSMS]` tag from the original card
+
+The original card stays untouched. Works with manually created cards, AC-generated cards, or any other source.
 
 ---
 
@@ -103,11 +124,12 @@ At the top of `library.js` you'll find two config blocks:
 ```js
 const CSMS_CONFIG =
 {
-  STAT_MAX: 50,           // Maximum value for any stat
-  STAT_MIN: 1,            // Minimum value for any stat
-  LOOKBACK_ACTIONS: 5,    // How many actions back to scan for character names
-  INJECTED_SHEET_MAX: 20, // Max character sheets injected into AI context per action
+  STAT_MAX: 50,               // Maximum value for any stat
+  STAT_MIN: 1,                // Minimum value for any stat
+  LOOKBACK_ACTIONS: 5,        // How many actions back to scan for character names
+  INJECTED_SHEET_MAX: 20,     // Max character sheets injected into AI context per action
   BANNED_NAMES: ["you", "adventurer"],  // Names not allowed as character names
+  AUTO_GENERATION_TAG: "[CSMS]",        // Tag for auto sheet generation
 }
 
 const NOTIFY_CONFIG =
@@ -164,10 +186,10 @@ Character sheet foundation, commands, NotifyThem integration
 **Phase 1.5 — Complete ✅**
 Editable stats, multiplayer, context injection, banned names
 
-**Phase 2 — Planned 📋**
+**Phase 2 — Complete ✅**
 Tag-based auto sheet generation
 
-**Phase 3+ — Planned 📋**
+**Phase 3 — Planned 📋**
 Roll system, combat, feats
 
 ---
