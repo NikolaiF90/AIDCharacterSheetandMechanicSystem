@@ -1,1 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSMS — Character Sheet & Mechanics System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
+  <div class="noise"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">CSMS</a>
+      <div class="nav-links">
+        <a href="player.html">Player Guide</a>
+        <a href="worldmaker.html">World Maker</a>
+        <a href="commands.html">Commands</a>
+        <a href="changelog.html">Changelog</a>
+        <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem" target="_blank" class="nav-cta">GitHub ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-bg">
+      <div class="rune rune-1">⬡</div>
+      <div class="rune rune-2">⬡</div>
+      <div class="rune rune-3">⬡</div>
+      <div class="rune rune-4">◈</div>
+      <div class="rune rune-5">◈</div>
+    </div>
+    <div class="hero-content">
+      <div class="hero-tag">AI Dungeon Scripting System</div>
+      <h1>Character Sheet &amp;<br><em>Mechanics System</em></h1>
+      <p class="hero-sub">The AI handles judgment.<br>The script handles consistency.</p>
+      <div class="hero-version">v1.3.0 — Phase 2 Complete</div>
+      <div class="hero-actions">
+        <a href="worldmaker.html" class="btn-primary">Get Started</a>
+        <a href="player.html" class="btn-secondary">I'm a Player</a>
+      </div>
+    </div>
+    <div class="hero-card-preview">
+      <div class="card-mock">
+        <div class="card-mock-title">📋 Nikolai</div>
+        <div class="card-mock-line">Name: Nikolai | Level: 3 | XP: 450</div>
+        <div class="card-mock-line">HP: 18/20 | AC: 15 | Speed: 30ft</div>
+        <div class="card-mock-line">Proficiency: +2</div>
+        <div class="card-mock-line card-mock-blank"></div>
+        <div class="card-mock-line">STR: 15 (+2)  DEX: 12 (+1)  CON: 14 (+2)</div>
+        <div class="card-mock-line">INT: 10 (+0)  WIS: 11 (+0)  CHA: 13 (+1)</div>
+      </div>
+    </div>
+  </header>
+
+  <section class="philosophy">
+    <div class="container">
+      <div class="section-tag">Philosophy</div>
+      <h2>Not a rules engine.<br>A narrative foundation.</h2>
+      <p>Most stat systems for AI Dungeon try to simulate a TTRPG. They tell the AI what to do, hardcode outcomes, and fight against the AI's creativity.</p>
+      <p>CSMS takes the opposite approach. It gives the AI <em>just enough</em> mechanical context to make decisions feel earned — and then gets out of the way.</p>
+      <div class="compare-grid">
+        <div class="compare-col compare-bad">
+          <div class="compare-label">Other systems</div>
+          <ul>
+            <li>Script decides outcomes</li>
+            <li>Hardcoded rules</li>
+            <li>Player vs numbers</li>
+            <li>Combat focused</li>
+            <li>Single character only</li>
+            <li>Fixed ruleset</li>
+          </ul>
+        </div>
+        <div class="compare-divider">vs</div>
+        <div class="compare-col compare-good">
+          <div class="compare-label">CSMS</div>
+          <ul>
+            <li>AI decides outcomes</li>
+            <li>Flexible narrative mechanics</li>
+            <li>Player vs story</li>
+            <li>Story focused</li>
+            <li>Multi-character + NPCs</li>
+            <li>Designed to be extended</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="container">
+      <div class="section-tag">Features</div>
+      <h2>Everything you need.<br>Nothing you don't.</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <h3>Character Sheets</h3>
+          <p>Dynamic story cards for every character — player and NPCs. Always visible, always in sync with your adventure.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✏️</div>
+          <h3>Editable Stats</h3>
+          <p>Edit values directly in the story card. Script validates, corrects errors, and rewrites cleanly. No commands needed.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🏷️</div>
+          <h3>Tag System</h3>
+          <p>Add <code>[CSMS]</code> to any card. When that character appears in your story, a sheet is auto-generated from the description.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">👥</div>
+          <h3>Multiplayer Ready</h3>
+          <p>Sheets auto-create when players join. Active player detection. Name change sync. Works out of the box.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <h3>AI Context Injection</h3>
+          <p>Compact character data is injected directly into what the AI sees — without bloating the story or breaking immersion.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔔</div>
+          <h3>NotifyThem</h3>
+          <p>Built-in notification system. Script communicates to player in clean brackets. AI ignores it. Players see it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="quickstart">
+    <div class="container">
+      <div class="section-tag">Quick Start</div>
+      <h2>Up and running<br>in 5 minutes.</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-content">
+            <h3>Copy the Library</h3>
+            <p>Grab <code>library.js</code> from the GitHub repo and paste the entire contents into your scenario's <strong>Library</strong> tab.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-content">
+            <h3>Add the Hooks</h3>
+            <p>Three lines, three tabs. Input, Context, Output. Each gets one call to <code>CSMS(hook)</code>.</p>
+            <pre><code>CSMS("input");  // Input tab
+CSMS("context"); // Context tab
+CSMS("output");  // Output tab</code></pre>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-content">
+            <h3>Create a Character</h3>
+            <p>In your adventure, type <code>/csms create YourName</code>. Your character sheet appears instantly.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">04</div>
+          <div class="step-content">
+            <h3>Play</h3>
+            <p>That's it. The AI now knows your stats. Edit the card anytime. The script keeps everything in sync.</p>
+          </div>
+        </div>
+      </div>
+      <div class="quickstart-cta">
+        <a href="worldmaker.html" class="btn-primary">Full World Maker Guide</a>
+        <a href="player.html" class="btn-secondary">Player Guide</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="compatibility">
+    <div class="container">
+      <div class="section-tag">Compatibility</div>
+      <h2>Plays well with others.</h2>
+      <p>CSMS is designed to run alongside other popular AID scripts without conflict.</p>
+      <div class="compat-grid">
+        <div class="compat-item">
+          <strong>Inner Self</strong>
+          <span class="compat-status good">✓ Compatible</span>
+          <p>Same architecture pattern. State namespaced to avoid conflicts.</p>
+        </div>
+        <div class="compat-item">
+          <strong>Auto-Cards</strong>
+          <span class="compat-status good">✓ Compatible</span>
+          <p>CSMS cards use unique keys. Tag system works with AC-generated cards.</p>
+        </div>
+        <div class="compat-item">
+          <strong>Third Person</strong>
+          <span class="compat-status good">✓ Compatible</span>
+          <p>Full multiplayer support built in. Add Third Person plot component and go.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <div class="footer-logo">CSMS</div>
+          <p>Character Sheet & Mechanics System<br>by <strong>PrinceF90</strong></p>
+          <p class="footer-quote"><em>"The AI handles judgment. The script handles consistency."</em></p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <div class="footer-col-title">Docs</div>
+            <a href="player.html">Player Guide</a>
+            <a href="worldmaker.html">World Maker Guide</a>
+            <a href="commands.html">Commands</a>
+            <a href="changelog.html">Changelog</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Project</div>
+            <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem" target="_blank">GitHub</a>
+            <a href="https://play.aidungeon.com" target="_blank">AI Dungeon</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>Free and open source. Credit appreciated, not required.</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

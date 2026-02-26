@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Guide — CSMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="noise"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">CSMS</a>
+      <div class="nav-links">
+        <a href="player.html" style="color: var(--gold)">Player Guide</a>
+        <a href="worldmaker.html">World Maker</a>
+        <a href="commands.html">Commands</a>
+        <a href="changelog.html">Changelog</a>
+        <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem" target="_blank" class="nav-cta">GitHub ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="section-tag">Documentation</div>
+      <h1>Player Guide</h1>
+      <p>Everything you need to know as a player in a CSMS-powered adventure.</p>
+    </div>
+  </div>
+
+  <div class="content-body">
+
+    <h2>What is CSMS?</h2>
+    <p>CSMS is a script running behind the scenes in your AI Dungeon adventure. It gives your character a proper stat sheet — like a D&D character card — and makes sure the AI always knows your character's abilities when making decisions about your story.</p>
+    <p>You don't need to understand how it works. You just need to know how to use it.</p>
+
+    <h2>Your Character Sheet</h2>
+    <p>Your character sheet lives in the <strong>Story Cards</strong> panel (the icon that looks like stacked cards). Look for a card with a 📋 emoji at the start of the title — that's yours.</p>
+    <p>It looks like this:</p>
+    <pre><code>Name: Nikolai | Level: 1 | XP: 0
+HP: 10/10 | AC: 10 | Speed: 30ft
+Proficiency: +2
+
+STR: 10 (+0)  DEX: 10 (+0)  CON: 10 (+0)
+INT: 10 (+0)  WIS: 10 (+0)  CHA: 10 (+0)</code></pre>
+
+    <p>The AI sees this card when writing your story. If your STR is 18, the AI knows you're incredibly strong. If your HP is low, the AI knows you're in danger.</p>
+
+    <h2>Creating Your Character</h2>
+    <p>If your world maker hasn't set up automatic character creation, you'll need to create your sheet manually. Just type this anywhere in your adventure:</p>
+    <pre><code>/csms create YourName</code></pre>
+    <p>Replace <code>YourName</code> with your character's actual name. Your sheet will appear immediately.</p>
+
+    <div class="tip-box">
+      <strong>Tip:</strong> In multiplayer adventures with Third Person mode enabled, your sheet is created automatically when you join. No command needed.
+    </div>
+
+    <h2>Editing Your Stats</h2>
+    <p>You can change any value on your sheet directly. Open the Story Cards panel, find your 📋 card, and click to edit it. Change any number you want, then just keep playing — the script will read your changes on the next action and update everything automatically.</p>
+
+    <div class="tip-box">
+      <strong>Want it to update right now?</strong> Type <code>/csms sync</code> after editing and your sheet will sync immediately.
+    </div>
+
+    <div class="warning-box">
+      <strong>Warning:</strong> If you type something that isn't a valid number (like letters), the script will reject that value and keep the old one. It'll notify you in brackets at the top of the next AI response.
+    </div>
+
+    <h2>What the Stats Mean</h2>
+    <p>CSMS uses D&D 5e as its foundation, but your world maker may interpret these differently. In general:</p>
+
+    <table class="cmd-table">
+      <tr><th>Stat</th><th>What it affects</th></tr>
+      <tr><td>STR</td><td>Physical power, melee attacks, carrying capacity</td></tr>
+      <tr><td>DEX</td><td>Agility, ranged attacks, stealth, reflexes</td></tr>
+      <tr><td>CON</td><td>Endurance, health, resistance to pain</td></tr>
+      <tr><td>INT</td><td>Knowledge, memory, reasoning, magic (sometimes)</td></tr>
+      <tr><td>WIS</td><td>Perception, intuition, willpower</td></tr>
+      <tr><td>CHA</td><td>Persuasion, deception, social influence</td></tr>
+      <tr><td>HP</td><td>How much damage you can take before going down</td></tr>
+      <tr><td>AC</td><td>How hard you are to hit</td></tr>
+    </table>
+
+    <p>The number in brackets after each stat (like <code>+2</code> or <code>-1</code>) is your modifier — this is what actually gets applied to rolls and checks.</p>
+
+    <h2>Notifications</h2>
+    <p>Sometimes you'll see a message in brackets at the top of an AI response, like:</p>
+    <pre><code>[!NOTIFICATION!
+Your character sheet has been updated.]</code></pre>
+    <p>This is CSMS talking to you. The AI ignores these brackets — they're purely for you. You might see notifications when:</p>
+    <ul>
+      <li>Your character sheet is created or updated</li>
+      <li>A stat value you entered was invalid</li>
+      <li>A new character sheet was auto-generated</li>
+      <li>Something was synced or reset</li>
+    </ul>
+
+    <h2>Commands Cheat Sheet</h2>
+    <p>You can type these anywhere in your adventure input:</p>
+
+    <table class="cmd-table">
+      <tr><th>Command</th><th>What it does</th></tr>
+      <tr><td>/csms create [name]</td><td>Create a new character sheet</td></tr>
+      <tr><td>/csms stats</td><td>Refresh your character sheet display</td></tr>
+      <tr><td>/csms stats [name]</td><td>Refresh a specific character's sheet</td></tr>
+      <tr><td>/csms sync</td><td>Force sync your card edits right now</td></tr>
+      <tr><td>/csms sync [name]</td><td>Force sync a specific character's card</td></tr>
+    </table>
+
+    <div class="tip-box">
+      <strong>Multiplayer note:</strong> In multiplayer, <code>/csms stats</code> and <code>/csms sync</code> with no name always affect <em>your</em> character — the one whose name matches your current input.
+    </div>
+
+    <h2>Frequently Asked Questions</h2>
+
+    <h3>My sheet disappeared. What do I do?</h3>
+    <p>Type <code>/csms stats</code> to refresh it. If it's truly gone, type <code>/csms create YourName</code> to recreate it. Your stats will reset to defaults, so you'll need to edit them back.</p>
+
+    <h3>Can I set my stats to whatever I want?</h3>
+    <p>Yes — CSMS doesn't judge. The world maker may have set a maximum value (default is 50), but within that range, you're free to set anything. Whether the AI respects those stats in the story is up to the world maker's scenario design.</p>
+
+    <h3>My stat edit isn't sticking. Why?</h3>
+    <p>Check that you entered a plain number — no letters, symbols, or spaces. If you get a notification saying a value was rejected, the old value was kept. Also make sure the format of the card line wasn't broken — the script reads values by position, so the structure needs to stay intact.</p>
+
+    <h3>I see "STR:10 DEX:10..." appear in the story text. Is that a bug?</h3>
+    <p>This can happen if the tag system is generating a character sheet and something interrupted the process. It should only happen once and won't affect your story. Just keep playing.</p>
+
+  </div>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <div class="footer-logo">CSMS</div>
+          <p>Character Sheet & Mechanics System<br>by <strong>PrinceF90</strong></p>
+          <p class="footer-quote"><em>"The AI handles judgment. The script handles consistency."</em></p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <div class="footer-col-title">Docs</div>
+            <a href="player.html">Player Guide</a>
+            <a href="worldmaker.html">World Maker Guide</a>
+            <a href="commands.html">Commands</a>
+            <a href="changelog.html">Changelog</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Project</div>
+            <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem" target="_blank">GitHub</a>
+            <a href="https://play.aidungeon.com" target="_blank">AI Dungeon</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>Free and open source. Credit appreciated, not required.</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

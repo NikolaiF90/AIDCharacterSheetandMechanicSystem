@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog — CSMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .changelog-content h2 {
+      color: var(--gold);
+      font-size: 1.3rem;
+      margin: 2.5rem 0 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .changelog-content h3 {
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin: 1.5rem 0 0.5rem;
+    }
+    .changelog-content ul { margin-bottom: 0.5rem; }
+    .changelog-content li { font-size: 0.95rem; }
+    .changelog-content em { color: var(--text-muted); font-size: 0.85rem; }
+    .loading {
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 2rem 0;
+    }
+    .loading::after {
+      content: '...';
+      animation: dots 1.5s infinite;
+    }
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="noise"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">CSMS</a>
+      <div class="nav-links">
+        <a href="player.html">Player Guide</a>
+        <a href="worldmaker.html">World Maker</a>
+        <a href="commands.html">Commands</a>
+        <a href="changelog.html" style="color: var(--gold)">Changelog</a>
+        <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem" target="_blank" class="nav-cta">GitHub ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="section-tag">History</div>
+      <h1>Changelog</h1>
+      <p>Every version, every change. Always up to date.</p>
+    </div>
+  </div>
+
+  <div class="content-body">
+    <div id="changelog-output">
+      <p class="loading">Fetching latest changelog</p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <div class="footer-logo">CSMS</div>
+          <p>Character Sheet & Mechanics System<br>by <strong>PrinceF90</strong></p>
+          <p class="footer-quote"><em>"The AI handles judgment. The script handles consistency."</em></p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <div class="footer-col-title">Docs</div>
+            <a href="player.html">Player Guide</a>
+            <a href="worldmaker.html">World Maker Guide</a>
+            <a href="commands.html">Commands</a>
+            <a href="changelog.html">Changelog</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Project</div>
+            <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem" target="_blank">GitHub</a>
+            <a href="https://play.aidungeon.com" target="_blank">AI Dungeon</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>Free and open source. Credit appreciated, not required.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Fetch Changelog.MD from GitHub and render as HTML
+    const RAW_URL = "https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/assets/Changelog.MD";
+
+    function parseMarkdown(md)
+    {
+      return md
+        // h2
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        // h3
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        // italic (before bold to avoid conflict)
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        // bold
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        // inline code
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        // list items
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        // wrap consecutive li tags in ul
+        .replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`)
+        // horizontal rules
+        .replace(/^---$/gm, '<hr style="border-color: var(--border); margin: 2rem 0;">')
+        // paragraphs — lines that aren't already tags
+        .replace(/^(?!<[hul]|<li|<hr)(.+)$/gm, '<p>$1</p>')
+        // clean up empty paragraphs
+        .replace(/<p>\s*<\/p>/g, '');
+    }
+
+    fetch(RAW_URL)
+      .then(res =>
+      {
+        if (!res.ok) throw new Error("Failed to fetch");
+        return res.text();
+      })
+      .then(md =>
+      {
+        const html = parseMarkdown(md);
+        document.getElementById("changelog-output").innerHTML = `<div class="changelog-content">${html}</div>`;
+      })
+      .catch(() =>
+      {
+        document.getElementById("changelog-output").innerHTML =
+          `<p style="color: var(--text-muted)">Could not load changelog. <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/blob/main/assets/Changelog.MD" target="_blank">View on GitHub instead ↗</a></p>`;
+      });
+  </script>
+
+</body>
+</html>

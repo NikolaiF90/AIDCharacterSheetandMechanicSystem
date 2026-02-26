@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commands — CSMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="noise"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="index.html" class="nav-logo">CSMS</a>
+      <div class="nav-links">
+        <a href="player.html">Player Guide</a>
+        <a href="worldmaker.html">World Maker</a>
+        <a href="commands.html" style="color: var(--gold)">Commands</a>
+        <a href="changelog.html">Changelog</a>
+        <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem" target="_blank" class="nav-cta">GitHub ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="section-tag">Reference</div>
+      <h1>Commands</h1>
+      <p>All available CSMS commands. Type them anywhere in your adventure input.</p>
+    </div>
+  </div>
+
+  <div class="content-body">
+
+    <div class="tip-box">
+      <strong>How to use commands:</strong> Type any command directly into the adventure input field, the same way you'd type an action or dialogue. CSMS detects the command automatically — you don't need to be on any special screen.
+    </div>
+
+    <h2>Character Management</h2>
+
+    <table class="cmd-table">
+      <tr>
+        <th>Command</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>/csms create [name]</td>
+        <td>Creates a new character sheet. The first character created is marked as the player character. All subsequent characters are NPCs. Replace <code>[name]</code> with the character's name.</td>
+      </tr>
+      <tr>
+        <td>/csms stats</td>
+        <td>Refreshes and displays your character sheet (player character). Use this if your sheet seems out of date or not showing correctly.</td>
+      </tr>
+      <tr>
+        <td>/csms stats [name]</td>
+        <td>Refreshes a specific character's sheet by name. Useful for checking NPC sheets.</td>
+      </tr>
+    </table>
+
+    <h2>Syncing</h2>
+
+    <table class="cmd-table">
+      <tr>
+        <th>Command</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>/csms sync</td>
+        <td>Forces an immediate sync of your story card edits to state. Normally this happens automatically on the next action — use this if you want it to update right now.</td>
+      </tr>
+      <tr>
+        <td>/csms sync [name]</td>
+        <td>Forces immediate sync for a specific character's card.</td>
+      </tr>
+    </table>
+
+    <h2>Resetting</h2>
+
+    <table class="cmd-table">
+      <tr>
+        <th>Command</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>/csms reset [name]</td>
+        <td>Removes a specific character's sheet entirely — both the story card and the state data. The character's name is case-insensitive.</td>
+      </tr>
+      <tr>
+        <td>/csms reset</td>
+        <td>Removes ALL character sheets. Use with caution — this cannot be undone.</td>
+      </tr>
+      <tr>
+        <td>/csms cleanup</td>
+        <td>Scans for orphaned 📋 story cards that no longer have matching character data and removes them. Run this if you see stale cards in your story card list.</td>
+      </tr>
+    </table>
+
+    <h2>Notes</h2>
+
+    <h3>Commands work anywhere in your input</h3>
+    <p>You can type a command as part of regular text and it will still be detected. For example:</p>
+    <pre><code>> You check your status. /csms stats</code></pre>
+    <p>Both the action and the command will work. The AI sees your action; CSMS intercepts the command.</p>
+
+    <h3>Names are case-insensitive</h3>
+    <p><code>/csms reset nikolai</code> and <code>/csms reset Nikolai</code> and <code>/csms reset NIKOLAI</code> all do the same thing.</p>
+
+    <h3>Punctuation is stripped from names</h3>
+    <p>If your input contains punctuation near the name (like quotation marks), CSMS strips it automatically. <code>/csms create "Diana"</code> creates a character named <code>Diana</code>, not <code>"Diana"</code>.</p>
+
+    <h3>Multiplayer behavior</h3>
+    <p>In multiplayer with Third Person mode:</p>
+    <ul>
+      <li><code>/csms stats</code> with no name shows <em>your</em> character, not necessarily the first character created</li>
+      <li><code>/csms sync</code> with no name syncs <em>your</em> character</li>
+      <li>Any player can create or reset any character — there are no ownership restrictions</li>
+    </ul>
+
+  </div>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <div class="footer-logo">CSMS</div>
+          <p>Character Sheet & Mechanics System<br>by <strong>PrinceF90</strong></p>
+          <p class="footer-quote"><em>"The AI handles judgment. The script handles consistency."</em></p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <div class="footer-col-title">Docs</div>
+            <a href="player.html">Player Guide</a>
+            <a href="worldmaker.html">World Maker Guide</a>
+            <a href="commands.html">Commands</a>
+            <a href="changelog.html">Changelog</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Project</div>
+            <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem" target="_blank">GitHub</a>
+            <a href="https://play.aidungeon.com" target="_blank">AI Dungeon</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>Free and open source. Credit appreciated, not required.</p>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
