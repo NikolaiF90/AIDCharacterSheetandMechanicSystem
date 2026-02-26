@@ -36,10 +36,14 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 
 - Multi-character support — player and NPCs share the same system
 - Dynamic story card character sheets — visible to both player and AI
-- Case-insensitive command handling
+- Editable stats directly from story card — script validates and syncs automatically
+- Case-insensitive command handling with punctuation stripping
 - Bracketed notifications — script communicates to player without breaking AI narrative
 - Debug logging system with timestamps (NotifyThem)
 - Orphaned card cleanup
+- Compact character data injection into AI context — efficient even with large parties
+- Multiplayer compatible — auto-creates sheets on join, detects active player, syncs on name change
+- Banned names protection — prevents invalid character names
 - D&D 5e stat foundation (STR, DEX, CON, INT, WIS, CHA)
 - Designed for compatibility with Inner Self, Auto-Cards, and other popular systems
 
@@ -47,13 +51,10 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 
 ## Planned Features
 
-- Editable stats directly from story card
 - Tag-based auto character sheet generation `[CSMS] CharacterName`
 - Dice roll system with stat modifiers
 - Damage and HP tracking
 - Feat system (natural language, AI-interpreted)
-- Multiplayer compatibility
-- SpellCasting flag
 - NotifyThem as standalone publishable system
 
 ---
@@ -63,6 +64,7 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 ```
 /csms create [name]    — Create a new character sheet
 /csms stats [name]     — Refresh character sheet display
+/csms sync [name]      — Sync story card edits back to state
 /csms reset [name]     — Remove a specific character
 /csms reset            — Remove all characters
 /csms cleanup          — Remove orphaned story cards
@@ -96,17 +98,48 @@ modifier(text)
 
 ## Configuration
 
-At the top of `library.js` you'll find:
+At the top of `library.js` you'll find two config blocks:
 
 ```js
+const CSMS_CONFIG =
+{
+  STAT_MAX: 50,           // Maximum value for any stat
+  STAT_MIN: 1,            // Minimum value for any stat
+  LOOKBACK_ACTIONS: 5,    // How many actions back to scan for character names
+  INJECTED_SHEET_MAX: 20, // Max character sheets injected into AI context per action
+  BANNED_NAMES: ["you", "adventurer"],  // Names not allowed as character names
+}
+
 const NOTIFY_CONFIG =
 {
-  NOTIFICATION_HEADER: "!NOTIFICATION!",  // Change notification header text
+  NOTIFICATION_HEADER: "!NOTIFICATION!",  // Notification header text
   DEBUG_MODE: false                        // Set true for debug logging
 }
 ```
 
 Set `DEBUG_MODE: true` while building your scenario. Set to `false` before publishing.
+
+---
+
+## Multiplayer
+
+CSMS is fully multiplayer compatible. In third-person multiplayer adventures:
+- Character sheets are **auto-created** when players join — no `/csms create` needed
+- The active player is detected automatically from input
+- If a player renames their character mid-session, their old sheet is removed and a new one created automatically
+- "You" and other banned names are silently ignored during auto-creation
+
+---
+
+## Editing Stats
+
+Players can edit their character sheet directly from the story card UI. Just change any value and the script will:
+- Validate the new value on the next action
+- Fall back to the last known good value if invalid
+- Notify the player of any errors
+- Rewrite the card cleanly
+
+Use `/csms sync [name]` to force an immediate sync after editing.
 
 ---
 
@@ -119,6 +152,7 @@ CSMS is built by a scripter, for scripters. Every design decision has a reason:
 - **Compatible by default** — works alongside Inner Self, Auto-Cards, and other systems
 - **Transparent** — bracketed notifications keep players informed without breaking immersion
 - **Extensible** — clean architecture, each feature is its own layer
+- **World builder friendly** — show everything, restrict nothing, warn when something's wrong
 
 ---
 
@@ -127,8 +161,11 @@ CSMS is built by a scripter, for scripters. Every design decision has a reason:
 **Phase 1 — Complete ✅**
 Character sheet foundation, commands, NotifyThem integration
 
-**Phase 2 — In Progress 🔄**
-Editable stats, tag system, multiplayer
+**Phase 1.5 — Complete ✅**
+Editable stats, multiplayer, context injection, banned names
+
+**Phase 2 — Planned 📋**
+Tag-based auto sheet generation
 
 **Phase 3+ — Planned 📋**
 Roll system, combat, feats
