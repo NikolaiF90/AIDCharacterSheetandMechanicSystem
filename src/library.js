@@ -6,6 +6,7 @@ const CSMS_CONFIG =
   LOOKBACK_ACTIONS: 5,    // How many actions back to search for characters
   INJECTED_SHEET_MAX: 20,   // Maximum charater sheet should be loaded
   TEMP_TRIGGER: "github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem",
+  BANNED_NAMES: ["you", "adventurer"],
 }
 
 // ============================================
@@ -72,7 +73,7 @@ function resetNotification()
 
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.1.0 by PrinceF90
+// v1.2.0 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -114,15 +115,39 @@ function CSMS(hook)
     state.characters = [];
   }
 
+  // Create CS for new player
+  if (info.characters && info.characters.length > 0)
+  {
+    info.characters.forEach(charName =>
+    {
+      // Skip banned names
+      if (CSMS_CONFIG.BANNED_NAMES.indexOf(charName.toLowerCase()) !== -1) return;
+
+      // Skip if already exists
+      if (findCharacter(charName)) return;
+
+      // First character created is the player
+      const isFirstPlayer = state.characters.length === 0;
+      const character = initCharacter(charName, isFirstPlayer, true);
+      state.characters.push(character);
+      updateCharacterCard(character);
+      notify(`Character sheet auto-created for ${charName}`, `auto-created: ${charName}`);
+    });
+  }
+
+  // Always check for ghost
+  syncMultiplayerCharacters();
+
   // ==================
   // CHARACTER
   // ==================
 
-  function initCharacter(cName, cIsPlayer = false)
+  function initCharacter(cName, cIsPlayer = false, cIsMultiplayer = false)
   {
     return {
       name: cName,
       isPlayer: cIsPlayer,
+      isMultiplayerCharacter: cIsMultiplayer,
       level: 1,
       xp: 1,
       hp: { current: 10, max: 10 },
@@ -153,6 +178,49 @@ function CSMS(hook)
   function getPlayer()
   {
     return state.characters.find(c => c.isPlayer === true);
+  }
+
+  // Find player that execute the action
+  function getActivePlayer()
+  {
+    // Singleplayer — just return the player
+    if (!info.characters || info.characters.length === 0)
+    {
+      return getPlayer();
+    }
+
+    // Multiplayer — detect from input text
+    const inputText = text.trim();
+    for (const charName of info.characters)
+    {
+      if (inputText.indexOf(`> ${charName}`) !== -1)
+      {
+        return findCharacter(charName);
+      }
+    }
+
+    // Fallback
+    return getPlayer();
+  }
+
+  // Remove ghost data and CS
+  function syncMultiplayerCharacters()
+  {
+    if (!info.characters || info.characters.length === 0) return;
+
+    // Find state characters that are multiplayer but no longer in info.characters
+    const toRemove = state.characters.filter(c =>
+      c.isMultiplayerCharacter === true &&
+      info.characters.indexOf(c.name) === -1
+    );
+
+    toRemove.forEach(c =>
+    {
+      const index = state.characters.indexOf(c);
+      state.characters.splice(index, 1);
+      removeCharacterCard(c.name);
+      notify(`Character sheet removed for ${c.name} (left or renamed).`, `removed: ${c.name}`);
+    });
   }
 
   // ==================
@@ -318,6 +386,13 @@ function CSMS(hook)
   {
     const name = param || "Adventurer";
 
+    // Name is important
+    if (CSMS_CONFIG.BANNED_NAMES.indexOf(name.toLowerCase()) !== -1)
+    {
+      return `"${name}" is not a valid character name. Please choose a different name.`;
+    }
+
+    // We don't want doppleganger
     if (findCharacter(name))
     {
       return `${name} already exists! Use /csms reset ${name} to start over.`;
@@ -348,7 +423,7 @@ function CSMS(hook)
     }
     else
     {
-      character = getPlayer();
+      character = getActivePlayer();
       if (!character)
       {
         return `No player character found. Use /csms create [name] first.`;
@@ -374,7 +449,7 @@ function CSMS(hook)
       }
     } else
     {
-      c = getPlayer();
+      c = getActivePlayer();
       if (!c)
       {
         return `No player character found.`;
