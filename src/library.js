@@ -7,6 +7,7 @@ const CSMS_CONFIG =
   INJECTED_SHEET_MAX: 20,   // Maximum charater sheet should be loaded
   TEMP_TRIGGER: "github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem",
   BANNED_NAMES: ["you", "adventurer"],
+  AUTO_GENERATION_TAG: "[CSMS]",    // System will generate Charater Sheet for cards with this tag
 }
 
 // ============================================
@@ -120,6 +121,7 @@ function CSMS(hook)
   {
     info.characters.forEach(charName =>
     {
+      if (!charName || charName.trim() === "") return;
       // Skip banned names
       if (CSMS_CONFIG.BANNED_NAMES.indexOf(charName.toLowerCase()) !== -1) return;
 
@@ -354,6 +356,131 @@ function CSMS(hook)
     }
   }
 
+  // Detect if its valid CS card
+  function isCharacterSheet(card, name)
+  {
+    const hasEmoji = card.title === `📋 ${name}`;
+    const hasKey = card.keys.indexOf(`csms_cs_${name.toLowerCase()}`) !== -1;
+    return hasEmoji || hasKey;
+  }
+
+  // Scan for card with `generation tag`
+  function getTaggedCards()
+  {
+    return storyCards.filter(card =>
+      card.title.toLowerCase().startsWith(CSMS_CONFIG.AUTO_GENERATION_TAG.toLowerCase())
+    );
+  }
+
+  // Get the name of the card with `generation tag` and remove the tag
+  function getTaggedName(card)
+  {
+    const tag = CSMS_CONFIG.AUTO_GENERATION_TAG.toLowerCase();
+    const stripped = card.title.toLowerCase().startsWith(tag)
+      ? card.title.slice(tag.length).trim()
+      : card.title.trim();
+    
+    // Strip emoji prefix if world maker included it
+    return stripped.replace(/^📋\s*/,"").trim();
+  }
+
+  // Generate CS for tagged cards
+  function processTaggedCards()
+  { 
+    const taggedCards = getTaggedCards();
+        
+    taggedCards.forEach(card =>
+    {
+      const name = getTaggedName(card);
+      if (!name) return;
+
+      // Check if name appears in recent history
+      const recentHistory = history.slice(-CSMS_CONFIG.LOOKBACK_ACTIONS);
+      const recentText = recentHistory.map(h => h.text || "").join(" ").toLowerCase();
+      if (recentText.indexOf(name.toLowerCase()) === -1) return;
+
+      // Search for a SEPARATE existing CS card
+      const existingCS = storyCards.find(c => c !== card && isCharacterSheet(c, name));
+
+      if (existingCS)
+      {
+        // Separate CS exists — sync it, remove tag from this card
+        const character = findCharacter(name);
+        if (character) parseCharacterCard(character);
+        card.title = name;
+      }
+      else if (isCharacterSheet(card, name))
+      {
+        // Tagged card IS the CS — parse it directly, remove tag
+        const character = findCharacter(name);
+        if (character)
+        {
+          parseCharacterCard(character);
+          card.title = `📋 ${name}`;  // rename properly
+        }
+      }
+      else
+      {
+        // No CS anywhere — trigger AI generation
+        if (!state.csmsPending)
+        {
+          state.csmsPending = name;
+          state.memory.frontMemory = `[Do not continue the story. Instead, based on the story card entry for "${name}", respond ONLY with this exact format and nothing else: STR:x DEX:x CON:x INT:x WIS:x CHA:x HP:x AC:x]`;
+        }
+      }
+    });
+  }
+
+  // Create CS based on AI output
+  function generateNarrativeSheet()
+  {
+    if (state.csmsPending)
+    {
+      const name = state.csmsPending;
+      
+      // Try to parse stats from AI response
+      const strMatch = text.match(/STR:\s*(\d+)/i);
+      const dexMatch = text.match(/DEX:\s*(\d+)/i);
+      const conMatch = text.match(/CON:\s*(\d+)/i);
+      const intMatch = text.match(/INT:\s*(\d+)/i);
+      const wisMatch = text.match(/WIS:\s*(\d+)/i);
+      const chaMatch = text.match(/CHA:\s*(\d+)/i);
+      const hpMatch  = text.match(/HP:\s*(\d+)/i);
+      const acMatch  = text.match(/AC:\s*(\d+)/i);
+
+      if (strMatch && dexMatch && conMatch && intMatch && wisMatch && chaMatch && hpMatch && acMatch)
+      {
+        // Create character
+        const isPlayer = state.characters.length === 0;
+        const character = initCharacter(name, isPlayer);
+        character.stats.str = parseInt(strMatch[1]);
+        character.stats.dex = parseInt(dexMatch[1]);
+        character.stats.con = parseInt(conMatch[1]);
+        character.stats.int = parseInt(intMatch[1]);
+        character.stats.wis = parseInt(wisMatch[1]);
+        character.stats.cha = parseInt(chaMatch[1]);
+        character.hp.current = parseInt(hpMatch[1]);
+        character.hp.max = parseInt(hpMatch[1]);
+        character.ac = parseInt(acMatch[1]);
+
+        state.characters.push(character);
+        updateCharacterCard(character);
+
+        // Remove tag from original card
+        const taggedCard = storyCards.find(c =>
+          c.title.toLowerCase() === `${CSMS_CONFIG.AUTO_GENERATION_TAG.toLowerCase()} ${name.toLowerCase()}`
+        );
+        if (taggedCard) taggedCard.title = name;
+
+        // Clear pending and strip stats from output
+        state.csmsPending = null;
+        text = text.replace(/STR:\s*\d+\s*DEX:\s*\d+\s*CON:\s*\d+\s*INT:\s*\d+\s*WIS:\s*\d+\s*CHA:\s*\d+\s*HP:\s*\d+\s*AC:\s*\d+/i, "").trim();
+
+        notify(`Character sheet generated for ${name}!`, `generated: ${name}`);
+      }
+    }
+  }
+
   function injectActiveCharacters()
   {
     const recentHistory = history.slice(-CSMS_CONFIG.LOOKBACK_ACTIONS);
@@ -560,10 +687,13 @@ function CSMS(hook)
     });
     
     injectActiveCharacters();
+    syncMultiplayerCharacters();
+    processTaggedCards();
   }
 
   if (hook === "output")
   {
+    generateNarrativeSheet();
     updateNotification();
   }
 
