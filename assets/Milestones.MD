@@ -32,23 +32,34 @@
 
 ---
 
-## Phase 1.5 — Quality of Life 🔄 IN PROGRESS
+## Phase 1.5 — Quality of Life ✅ COMPLETE
 
 ### Goals
 - Editable stats from story card UI
 - Multiplayer compatibility
 - `canCastSpell` flag
-- SC trigger keyword system for AC compatibility
+- Context injection system
 
-### Tasks
-- [ ] SC stat editing — player edits card entry, script parses and syncs to state
-  - Needs: parser, validation, typo correction (srt → str), fallback to last good value
-  - Needs: notify player of rejected/corrected values
-- [ ] `canCastSpell: false` flag — add to `initCharacter()`
-- [ ] SC trigger keywords — change card keys from character name to `csms_cs_CharacterName`
-  - Inject keyword into context so AI can still reference the card
-- [ ] Multiplayer — `info.characters` detection, associate sheets with multiplayer characters
-- [ ] `/csms debug [on/off]` — player toggleable debug mode command
+### Completed
+- [x] `/csms sync [name]` — manual sync story card edits to state
+- [x] `parseCharacterCard()` — position-based parser, label-agnostic regex
+- [x] `safeInt()` — validation with fallback and error notification
+- [x] Auto-sync on every context hook
+- [x] `canCastSpell: false` flag — added to `initCharacter()`
+- [x] `STAT_MIN` and `STAT_MAX` in `CSMS_CONFIG`
+- [x] `BANNED_NAMES` — prevents invalid names like "You", "Adventurer"
+- [x] `injectActiveCharacters()` — compact sheet injection into frontMemory
+- [x] `LOOKBACK_ACTIONS` and `INJECTED_SHEET_MAX` in `CSMS_CONFIG`
+- [x] Multiplayer auto-create — sheets created on join via `info.characters`
+- [x] `getActivePlayer()` — detects active player from input text in multiplayer
+- [x] `isMultiplayerCharacter` flag — protects NPCs from multiplayer sync
+- [x] `syncMultiplayerCharacters()` — removes sheets for players who left or renamed
+- [x] SC keyword placeholder `csms_cs_${name}` — AC-safe card triggers
+
+### Architecture additions
+- Context hook now handles: parseCharacterCard + injectActiveCharacters + syncMultiplayerCharacters
+- `state.memory.frontMemory` used for compact character data injection
+- `info.characters` is array of strings (not objects — docs are wrong)
 
 ---
 
@@ -62,7 +73,7 @@
 
 ### Tasks
 - [ ] Scan storyCards for `[CSMS]` prefix on each context hook run
-- [ ] Check if tagged character name appears in recent history/context
+- [ ] Check if tagged character name appears in recent history
 - [ ] If triggered — inject AI prompt via frontMemory to determine stats from card entry
 - [ ] Parse AI response for stat values
 - [ ] Generate character sheet with those stats
@@ -127,6 +138,7 @@
 - NotifyThem as standalone published system
 - NotifyThem story card (entry = player controls, notes = notification log)
 - `/csms setplayer [name]` — reassign who is the player character
+- `/csms debug [on/off]` — player toggleable debug mode
 - Inventory system
 - Status effects / conditions
 - XP and leveling system
