@@ -74,7 +74,7 @@ function resetNotification()
 
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.2.0 by PrinceF90
+// v1.3.0 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
