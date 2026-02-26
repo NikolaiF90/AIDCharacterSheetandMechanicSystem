@@ -3,6 +3,9 @@ const CSMS_CONFIG =
 {
   STAT_MAX: 50,   // Maximum value for any stats
   STAT_MIN: 1,    // Minimum value for any stats
+  LOOKBACK_ACTIONS: 5,    // How many actions back to search for characters
+  INJECTED_SHEET_MAX: 20,   // Maximum charater sheet should be loaded
+  TEMP_TRIGGER: "github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem",
 }
 
 // ============================================
@@ -121,7 +124,7 @@ function CSMS(hook)
       name: cName,
       isPlayer: cIsPlayer,
       level: 1,
-      xp: 0,
+      xp: 1,
       hp: { current: 10, max: 10 },
       ac: 10,
       speed: 30,
@@ -266,7 +269,7 @@ function CSMS(hook)
     {
       storyCards.push({
         title: cardTitle,
-        keys: `${c.name}, character, stats, sheet`,
+        keys: `csms_cs_${c.name}, ${CSMS_CONFIG.TEMP_TRIGGER}`,
         entry: cEntry,
         description: `CSMS Character Sheet - ${c.name}`
       });
@@ -280,6 +283,30 @@ function CSMS(hook)
     if (existing)
     {
       storyCards.splice(storyCards.indexOf(existing), 1);
+    }
+  }
+
+  function injectActiveCharacters()
+  {
+    const recentHistory = history.slice(-CSMS_CONFIG.LOOKBACK_ACTIONS);
+    const recentText = recentHistory.map(m => m.text || "").join(" ").toLowerCase();
+
+    const player = getPlayer();
+    const mentioned = state.characters.filter(c => 
+      c !== player && recentText.includes(c.name.toLowerCase())
+    );
+
+    const toInject = [player, ...mentioned]
+      .filter(Boolean)
+      .slice(0, CSMS_CONFIG.INJECTED_SHEET_MAX);
+
+    const injected = toInject.map(c => 
+      `[CSMS|${c.name}|HP:${c.hp.current}/${c.hp.max}|AC:${c.ac}|STR:${c.stats.str}|DEX:${c.stats.dex}|CON:${c.stats.con}|INT:${c.stats.int}|WIS:${c.stats.wis}|CHA:${c.stats.cha}]`
+    ).join("\n");
+    
+    if (injected)
+    {
+      state.memory.frontMemory = injected;
     }
   }
 
@@ -456,6 +483,8 @@ function CSMS(hook)
     {
       parseCharacterCard(c);
     });
+    
+    injectActiveCharacters();
   }
 
   if (hook === "output")
