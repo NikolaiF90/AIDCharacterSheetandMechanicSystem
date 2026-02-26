@@ -27,7 +27,7 @@
 - Input text always has newline prefix — always `.trim()` before processing
 - Script doesn't run if AI stutters/lags — player must retry, nothing we can do
 - `.includes()` works fine on strings as long as values are sanitized with `|| ""`
-- Library functions show up in `globalThis` — confirmed by testing `rollDice`
+- New storyCards pushed mid-output don't appear in UI until next action — AID rendering quirk
 
 ### state.memory
 - `state.memory.context` — write to this to override Plot Essentials
@@ -43,22 +43,31 @@
   updatedAt: "2026-02-23...",   // auto-assigned
   keys: "keyword1, keyword2",
   entry: "card content here",
-  type: "",
+  type: "class",                // "class" = default, or custom string e.g "1- Species"
   title: "Card Title",
-  description: "notes field",
-  useForCharacterCreation: false  // undocumented field
+  description: "Notes field — shown to player during character creation",
+  useForCharacterCreation: false  // true = card appears as selectable option in character creator scenarios
 }
 ```
+
+### Scenario Types (AID)
+- **Classic** — standard adventure, PE supports `${placeholder}` template syntax for player input
+- **Multi-choice** — player selects from creator-defined paths, each with different story openings
+- **Character creator** — player builds character by selecting story card options, story starts blank
+  - Cards with `useForCharacterCreation: true` appear as options
+  - Selected options get written to Plot Essentials automatically
+  - Classic scenario with PE templates gives MORE control — preferred for CSMS
 
 ### Multiplayer Findings (tested Feb 2026)
 - `info.characters` returns **array of strings**, NOT array of objects
   - Documentation says `[{ name: "Sam" }]` — THIS IS WRONG
   - Actual format: `["Nikolai", "Datwangye"]`
+- `info.characters` can contain empty strings — always guard with `!charName || charName.trim() === ""`
 - All players default to name "You" on join — must change manually
 - Third Person plot component switches input format from `> You` to `> Name`
 - All players see the same output in real-time
 - Host model settings apply to all players
-- Name changes mid-session don't sync instantly across all screens (AID UI lag)
+- Name changes mid-session don't sync instantly across all screens — AID UI lag
 - Input format in third person: `\n> CharacterName action here`
 
 ### Known Bugs / Limitations
@@ -67,6 +76,7 @@
 - LMI and logs expire after a few minutes — keep second tab open while testing
 - `updateWorldEntry` throws error if index doesn't exist (no longer silent)
 - Inspect panel (Last AI Call) unreliable — use `log()` to verify frontMemory injection
+- New storyCards pushed in output hook don't appear in UI until next player action
 
 ---
 
@@ -84,17 +94,11 @@ AI treats bracketed content as out-of-character notes — sees it but doesn't na
 ### Why regex scan instead of startsWith for commands
 AID prepends `> You` or `> You say, "..."` to do/say inputs. Format changes between versions. Scanning entire input for `/csms` pattern anywhere is future-proof and format-agnostic.
 
-### Why `feedToOutput` removed from notify()
-Single responsibility principle. `notify()` just stores messages. `updateNotification()` handles flushing. Cleaner separation.
-
-### Why NotifyThem is separate from CSMS
-Independent reusability — other scripters can use NotifyThem without CSMS. Publishable as standalone system. Clean separation of concerns.
-
 ### Why position-based parsing in parseCharacterCard
 Reading values by position instead of label means player can rename any label without breaking the parser. `srt: 14` still gives us `14` for STR. Label is irrelevant — structure is what matters.
 
 ### Why `\S+` instead of `\d+` in parseCharacterCard regex
-`\d+` would fail silently if player types `ee` for a stat value — entire line match returns null and `safeInt` never gets called. `\S+` captures anything, lets `safeInt` handle validation and error reporting properly.
+`\d+` fails silently if player types `ee` for a stat value — entire line match returns null and `safeInt` never gets called. `\S+` captures anything, lets `safeInt` handle validation and error reporting properly.
 
 ### Why `isMultiplayerCharacter` flag
 Without it, `syncMultiplayerCharacters()` would delete NPC sheets when they're not in `info.characters`. Flag ensures only actual multiplayer player sheets get synced against the player list.
@@ -104,6 +108,18 @@ Full character sheets in frontMemory would consume too much context. One-line fo
 
 ### Why keyword system was deprioritized
 AID's native keyword system is unreliable for cross-script compatibility. Direct `frontMemory` injection gives us full control over what the AI sees and when. No keyword conflicts possible.
+
+### Why `state.csmsPending` is a single-item queue
+AI generation happens one at a time — we hijack the entire output for stat generation. Processing multiple simultaneously would cause chaos. One per action is intentional. Multiple tagged cards process sequentially over consecutive actions.
+
+### Why three branches in processTaggedCards
+- Separate CS exists → player already has a sheet, just sync and clean tag
+- Tagged card IS the CS → player put tag on their own sheet, parse and rename
+- No CS anywhere → trigger AI generation
+Each case needs different handling. Clear branching prevents silent wrong behavior.
+
+### Why NotifyThem is separate from CSMS
+Independent reusability — other scripters can use NotifyThem without CSMS. Publishable as standalone system. Clean separation of concerns.
 
 ---
 
@@ -122,13 +138,40 @@ notify(result) — store in state.notifyMessages
     ↓
 Original player text passes to AI unchanged
     ↓
-Context hook — parseCharacterCard + injectActiveCharacters + syncMultiplayerCharacters
+Context hook — parseCharacterCard + injectActiveCharacters + syncMultiplayerCharacters + processTaggedCards
     ↓
-AI generates narrative
+AI generates narrative (or stat response if csmsPending)
     ↓
-Output hook — updateNotification() prepends [brackets] to output
+Output hook — generateNarrativeSheet() + updateNotification()
     ↓
 Player sees: [CSMS notification] + AI narrative
+```
+
+---
+
+## Tag System Flow
+
+```
+World maker creates: [CSMS] Mira card with description entry
+    ↓
+Context hook — processTaggedCards() finds [CSMS] Mira
+    ↓
+Check recent history — does "Mira" appear?
+    ↓
+YES — check for existing CS
+    ↓
+No CS found — set state.csmsPending = "Mira"
+Inject stat generation prompt into frontMemory
+    ↓
+AI responds with: STR:x DEX:x CON:x INT:x WIS:x CHA:x HP:x AC:x
+    ↓
+Output hook — generateNarrativeSheet() detects csmsPending
+Parse stats, create character, updateCharacterCard()
+Remove [CSMS] tag from original card
+Strip stat string from visible output
+Clear state.csmsPending
+    ↓
+Player sees: [Character sheet generated for Mira!] + normal narrative
 ```
 
 ---
@@ -145,7 +188,8 @@ Player sees: [CSMS notification] + AI narrative
 ### Auto-Cards
 - AC generates cards by character name keywords — potential overlap
 - Current mitigation: `csms_cs_${name}` prefix on card keys
-- Better solution: direct `frontMemory` injection (implemented) makes keyword matching irrelevant for AI context
+- Better solution: direct `frontMemory` injection (implemented) makes keyword matching irrelevant
+- Tag system works WITH AC — AC generates a card, world maker adds `[CSMS]` tag, CSMS generates sheet
 
 ### General compatibility rule
 - Always namespace state variables: `state.characters`, `state.notifyMessages` etc
@@ -171,4 +215,4 @@ README.md           — Public documentation
 
 ## Context Recovery (for new Claude sessions)
 Paste this at start of conversation:
-*"Here's our AID CSMS project: [library.js](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/src/library.js) and [Notes.MD](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/assets/Notes.MD). For reference, here's the [AI Dungeon official scripting site](https://help.aidungeon.com/scripting), though it could be outdated. Read all and let's continue from Phase 2."*
+*"Here's our AID CSMS project: [library.js](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/src/library.js) and [Notes.MD](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/assets/Notes.MD). For reference, here's the [AI Dungeon official scripting site](https://help.aidungeon.com/scripting), though it could be outdated. Read all and let's continue from Phase 3."*
