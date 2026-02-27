@@ -69,7 +69,7 @@
 
 ### Completed
 - [x] `getTaggedCards()` — scans storyCards for AUTO_GENERATION_TAG prefix
-- [x] `getTaggedName()` — extracts clean name from tagged card title, strips emoji too
+- [x] `getTaggedName(card)` — extracts clean name from tagged card title, strips emoji too
 - [x] `isCharacterSheet()` — identifies valid CS cards by emoji OR csms_cs_ key
 - [x] `processTaggedCards()` — full detection and branching logic in context hook
 - [x] `generateNarrativeSheet()` — output hook intercepts AI stat response
@@ -86,39 +86,72 @@
 
 ---
 
-## Phase 3 — Roll System 📋 PLANNED
+## Phase 3 — Dice Engine ✅ COMPLETE
 
 ### Goals
-- Dice rolling with stat modifiers
-- DC checks (success/fail)
-- Player explicit roll commands
-- AI signals rolls via output tags
+- Core dice rolling with stat modifiers
+- Roll notation parser
+- Advantage / disadvantage support
+- Foundation for all future roll-based mechanics
 
-### Tasks
-- [ ] `/csms roll [dice]` — explicit roll command
-- [ ] AI output tag detection `[ROLL:1d20+STR]`
-- [ ] Stat modifier calculation and application
-- [ ] DC threshold check — script determines success/fail
-- [ ] Result injection — script feeds result back, AI narrates
-- [ ] Proficiency bonus application
+### Completed
+- [x] `rollDice(sides)` — single die roll utility
+- [x] `getModifier(score)` — D&D 5e modifier formula using `CSMS_CONFIG.AVERAGE_STAT`
+- [x] `formatMod(mod)` — signed string formatting (+2, -1, etc.)
+- [x] `statMod(score)` — convenience wrapper combining getModifier + formatMod
+- [x] `resolveRoll(notation, character, mode)` — full roll engine
+  - Parses `XdY+STAT` notation
+  - Handles normal / advantage / disadvantage modes
+  - Returns `{ total, rolls, modifier, breakDown }` object
+  - Breakdown string e.g. `1d20+DEX = [14] + DEX(+2) = 16`
+- [x] `AVERAGE_STAT` and `DEFAULT_STAT` in `CSMS_CONFIG`
+- [x] `DEFAULT_HP`, `DEFAULT_AC`, `DEFAULT_SPEED` in `CSMS_CONFIG`
 
 ---
 
-## Phase 4 — Combat 📋 PLANNED
+## Phase 4 — Roll Command ✅ COMPLETE
 
 ### Goals
-- Damage application
-- HP tracking
-- Death/injury states
-- AC-based hit detection
+- Player-initiated roll mechanics
+- AI stat determination
+- Two-action flow: stat detection → narrative
+- Retry mechanism for failed detection
 
-### Tasks
-- [ ] AI output tag `[DAMAGE:name:amount]`
-- [ ] AI output tag `[HEAL:name:amount]`
-- [ ] HP update and story card sync
-- [ ] Death threshold detection
-- [ ] Injury states (narrative flags for AI)
-- [ ] AC vs attack roll comparison
+### Completed
+- [x] `/csms roll [action]` command — player invokes mechanics explicitly
+- [x] `handleRoll(param)` — action text extraction, position-independent command parsing
+- [x] Context hook stat injection — `## Reply with only one word — the most relevant stat for "[action]": STR, DEX, CON, INT, WIS, or CHA.`
+- [x] `rollCheck()` — stat detection via regex, roll execution, output replacement
+- [x] Full stat name matching — catches `Dexterity`, `DEX`, `dex` etc.
+- [x] Notification with full roll breakdown shown to player
+- [x] `##` instruction injected into output — AI reads roll result, narrates outcome on Continue
+- [x] Retry loop — if AI doesn't return valid stat, re-prompts rather than silently failing
+- [x] `state.csmsRollPending` — stores action text across hooks
+- [x] Multiplayer-compatible action text parsing — strips `> You` and `> CharacterName` prefixes
+- [x] `MODULES.COMBAT` toggle — roll command gated behind combat module flag
+
+### Architecture (Roll Flow)
+```
+Player: > You pick the lock /csms roll
+  ↓
+Input hook — strips command, stores action in state.csmsRollPending
+  ↓
+Context hook — injects stat question when csmsRollPending is set
+  ↓
+AI responds with stat word (DEX, STR, etc.)
+  ↓
+Output hook — catches stat, resolveRoll(), replaces output with ## instruction
+  ↓
+Player sees: [notification with breakdown] + ## instruction (hidden from narrative)
+  ↓
+Player presses Continue
+  ↓
+AI reads ## instruction with roll result, narrates outcome
+```
+
+### Known Limitations
+- Harbinger model occasionally outputs extra text alongside stat — regex catches stat regardless
+- Two-action flow is intentional — one action for stat determination, one for narrative
 
 ---
 
@@ -141,7 +174,7 @@
 ## Backlog / Future Ideas
 
 - NotifyThem as standalone published system
-- PE template integration — read player-filled Plot Essentials template, auto-generate sheet
+- NotifyThem story card (entry = player controls, notes = notification log)
 - `/csms setplayer [name]` — reassign who is the player character
 - `/csms debug [on/off]` — player toggleable debug mode
 - Inventory system
@@ -149,4 +182,7 @@
 - XP and leveling system
 - Proficiency bonus auto-scaling with level
 - Spell slot tracking (if `canCastSpell: true`)
+- Damage and HP tracking (Phase 4 extension or Phase 6)
+- Opposed rolls — player vs NPC, both sides roll
+- DC checks — fixed difficulty threshold
 - World maker scenario templates
