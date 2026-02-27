@@ -45,6 +45,9 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 - Multiplayer compatible — auto-creates sheets on join, detects active player, syncs on name change
 - Banned names protection — prevents invalid character names
 - **Tag system** — add `[CSMS]` to any story card title, AI reads the entry and auto-generates a character sheet when that character appears in the story
+- **Dice engine** — full roll notation support (`1d20+STR`, advantage, disadvantage) with D&D 5e stat modifiers
+- **Player roll command** — `/csms roll [action]` lets player invoke mechanics explicitly; AI determines the relevant stat, script rolls the dice, result feeds back into the narrative
+- Module toggles — enable/disable CHARACTER_SHEETS, COMBAT, FEATS independently
 - D&D 5e stat foundation (STR, DEX, CON, INT, WIS, CHA)
 - Designed for compatibility with Inner Self, Auto-Cards, and other popular systems
 
@@ -52,9 +55,9 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 
 ## Planned Features
 
-- Dice roll system with stat modifiers
 - Damage and HP tracking
 - Feat system (natural language, AI-interpreted)
+- Inventory system
 - NotifyThem as standalone publishable system
 
 ---
@@ -68,6 +71,7 @@ CSMS doesn't replace the AI's judgment — it *informs* it. The dice create fric
 /csms reset [name]     — Remove a specific character
 /csms reset            — Remove all characters
 /csms cleanup          — Remove orphaned story cards
+/csms roll [action]    — Roll dice for an action (AI determines stat)
 ```
 
 ---
@@ -90,6 +94,33 @@ When Mira's name appears in the story, CSMS automatically:
 4. Removes the `[CSMS]` tag from the original card
 
 The original card stays untouched. Works with manually created cards, AC-generated cards, or any other source.
+
+---
+
+## Roll System
+
+CSMS puts mechanics in the player's hands. When an action has an uncertain outcome, the player invokes a roll explicitly:
+
+```
+> You try to pick the lock /csms roll
+> /csms roll convince the guard to let you pass
+> You attempt to leap across the gap /csms roll
+```
+
+**What happens:**
+1. Script strips the command, stores the clean action text
+2. Context hook injects a one-word stat question to the AI
+3. AI replies with the relevant stat (DEX, STR, CHA, etc.)
+4. Output hook catches the stat, rolls `1d20 + modifier`, replaces AI's response with the result
+5. Player sees a notification with the full breakdown (e.g. `1d20+DEX = [14] + DEX(+2) = 16`)
+6. Player presses Continue — AI narrates the outcome informed by the roll result
+
+The AI determines *what* stat applies. The script handles *how* the dice fall. The AI decides *what it means* for the story.
+
+**Roll modes** (used internally, available for future DC/opposed checks):
+- `normal` — standard single roll
+- `advantage` — roll twice, take higher
+- `disadvantage` — roll twice, take lower
 
 ---
 
@@ -124,18 +155,33 @@ At the top of `library.js` you'll find two config blocks:
 ```js
 const CSMS_CONFIG =
 {
-  STAT_MAX: 50,               // Maximum value for any stat
-  STAT_MIN: 1,                // Minimum value for any stat
-  LOOKBACK_ACTIONS: 5,        // How many actions back to scan for character names
-  INJECTED_SHEET_MAX: 20,     // Max character sheets injected into AI context per action
-  BANNED_NAMES: ["you", "adventurer"],  // Names not allowed as character names
-  AUTO_GENERATION_TAG: "[CSMS]",        // Tag for auto sheet generation
+  MODULES:
+  {
+    CHARACTER_SHEETS: true,  // includes tag system + context injection
+    COMBAT: true,            // uses dice internally, needs CHARACTER_SHEETS
+    FEATS: true,             // uses dice internally, needs CHARACTER_SHEETS
+    INVENTORY: false,        // Future — not yet implemented
+  },
+
+  STAT_MAX: 50,
+  STAT_MIN: 1,
+  AVERAGE_STAT: 10,          // Used for modifier calculation (D&D 5e formula)
+  DEFAULT_STAT: 10,          // Initial value assigned to all stats on creation
+  DEFAULT_HP: 10,
+  DEFAULT_AC: 10,
+  DEFAULT_SPEED: 30,
+
+  LOOKBACK_ACTIONS: 5,
+  INJECTED_SHEET_MAX: 20,
+
+  AUTO_GENERATION_TAG: "[CSMS]",
+  BANNED_NAMES: ["you", "adventurer"],
 }
 
 const NOTIFY_CONFIG =
 {
-  NOTIFICATION_HEADER: "!NOTIFICATION!",  // Notification header text
-  DEBUG_MODE: false                        // Set true for debug logging
+  NOTIFICATION_HEADER: "!NOTIFICATION!",
+  DEBUG_MODE: false
 }
 ```
 
@@ -170,6 +216,7 @@ Use `/csms sync [name]` to force an immediate sync after editing.
 CSMS is built by a scripter, for scripters. Every design decision has a reason:
 
 - **AI does the heavy lifting** — script handles math and state, AI handles narrative judgment
+- **Player agency** — player decides when mechanics apply, AI decides what stat, script produces the number
 - **Minimal action steps** — player shouldn't need 5 commands to do 1 thing
 - **Compatible by default** — works alongside Inner Self, Auto-Cards, and other systems
 - **Transparent** — bracketed notifications keep players informed without breaking immersion
@@ -189,8 +236,14 @@ Editable stats, multiplayer, context injection, banned names
 **Phase 2 — Complete ✅**
 Tag-based auto sheet generation
 
-**Phase 3 — Planned 📋**
-Roll system, combat, feats
+**Phase 3 — Complete ✅**
+Dice engine, roll notation, stat modifiers, advantage/disadvantage
+
+**Phase 4 — Complete ✅**
+Player roll command, AI stat determination, two-action roll flow
+
+**Phase 5 — Planned 📋**
+Feat system (natural language, AI-interpreted)
 
 ---
 
