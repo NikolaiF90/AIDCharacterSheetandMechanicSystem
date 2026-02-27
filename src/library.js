@@ -1,13 +1,39 @@
+// ============================================
+// CSMS - Character Stats and Mechanics System
+// v1.4.0 by PrinceF90
+// Visit https://github.com/NikolaiF90?tab=repositories
+// Include this header if you're using this script in your scenario
+// ============================================
+
 // Edit this field as your preference
 const CSMS_CONFIG =
 {
-  STAT_MAX: 50,   // Maximum value for any stats
-  STAT_MIN: 1,    // Minimum value for any stats
-  LOOKBACK_ACTIONS: 5,    // How many actions back to search for characters
+  // Module toggles
+  MODULES:
+  {
+    CHARACTER_SHEETS: true,   // includes tag system + context injection
+    COMBAT: true,             // uses dice internally, needs CHARACTER_SHEETS
+    FEATS: false,             // uses dice internally, needs CHARACTER_SHEETS          // Future - not yet implemented
+    INVENTORY: false,         // Future - not yet implemented
+  },
+
+  /*  STATS */
+  STAT_MAX: 50,         // Maximum value for any stats
+  STAT_MIN: 1,          // Minimum value for any stats
+  AVERAGE_STAT: 10,     // Average character stats
+  DEFAULT_STAT: 10,     // Default value assigned to stat without customisation
+  DEFAULT_HP: 10,       // Default value assigned to Health Points
+  DEFAULT_AC: 10,       // DEfault value assigned to Armor Class
+  DEFAULT_SPEED: 30,    // Default value assigned to Speed
+
+  /*  TECHNICAL */
+  LOOKBACK_ACTIONS: 5,      // How many actions back to search for characters
   INJECTED_SHEET_MAX: 20,   // Maximum charater sheet should be loaded
+  
+  /*  TEXT CUSTOMIZATION */
+  AUTO_GENERATION_TAG: "[CSMS]",    // System will generate Charater Sheet for cards with this tag
   TEMP_TRIGGER: "github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem",
   BANNED_NAMES: ["you", "adventurer"],
-  AUTO_GENERATION_TAG: "[CSMS]",    // System will generate Charater Sheet for cards with this tag
 }
 
 // ============================================
@@ -72,13 +98,6 @@ function resetNotification()
 // End of script
 // ============================================
 
-// ============================================
-// CSMS - Character Stats and Mechanics System
-// v1.3.0 by PrinceF90
-// Visit https://github.com/NikolaiF90?tab=repositories
-// Include this header if you're using this script in your scenario
-// ============================================
-
 
 function CSMS(hook)
 {
@@ -90,20 +109,162 @@ function CSMS(hook)
   {
     return Math.floor(Math.random() * sides) + 1;
   }
-
+  // Calculate the modifier
   function getModifier(score)
   {
-    return Math.floor((score - 10) / 2);
+    return Math.floor((score - CSMS_CONFIG.AVERAGE_STAT) / 2);
   }
-
+  // give the + sign if modifier more than 0
   function formatMod(mod)
   {
     return mod >= 0 ? `+${mod}` : `${mod}`;
   }
-
+  // calculate stat modifier, and return the result in string
   function statMod(score)
   {
     return formatMod(getModifier(score));
+  }
+
+  // ============================================
+  // DICE ENGINE — internal infrastructure
+  // ============================================
+
+
+  function resolveRoll(notation, character, mode)
+  {
+    // Default mode
+    mode = mode || "normal";
+
+    // Parse notation - e.g. "1d20+STR", "2d6", "1d8+3"
+    const match = notation.match(/^(\d+)d(\d+)(?:\+([a-zA-Z0-9]+))?$/i);
+    if (!match) return null;
+
+    const numDice = parseInt(match[1]);
+    const dieSides = parseInt(match[2]);
+    const modRaw = match [3] || null;  // "STR", "3", null
+
+    // Resolve modifier - check if its a state name or flat number
+    let modifierValue = 0;
+    let modifierLabel = "";
+
+    if (modRaw)
+    {
+      if (!isNaN(parseInt(modRaw)))
+      {
+        // Flat number - "1d8+3"
+        modifierValue = parseInt(modRaw);
+        modifierLabel = `${modifierValue}`;
+      } 
+      else if (character)
+      {
+        // Stat name - "1d20+STR"
+        const stat = character.stats[modRaw.toLowerCase()];
+        if (stat !== undefined)
+        {
+          modifierValue = getModifier(stat);
+          const formatted = formatMod(modifierValue); 
+          modifierLabel = `${modRaw.toUpperCase()}(${formatted})`;
+        }
+      }
+    }
+
+    function doRoll()
+    {
+      const results = [];
+      for (let i = 0; i < numDice; i++)
+      {
+        /*
+        let result = rollDice();
+        results.push(result);
+        */
+        results.push(rollDice(dieSides));
+      }
+      return results;
+    }
+
+    let rolls, rolls2;
+
+    if (mode === "advantage")
+    {
+      rolls = doRoll();
+      rolls2 = doRoll();
+      const sum1 = rolls.reduce((a, b) => a+b, 0);
+      const sum2 = rolls2.reduce((a, b) => a+b, 0);
+      rolls = sum1 >= sum2 ? rolls : rolls2;
+    }
+    else if (mode === "disadvantage")
+    {
+      rolls = doRoll();
+      rolls2 = doRoll();
+      const sum1 = rolls.reduce((a, b) => a+b, 0);
+      const sum2 = rolls2.reduce((a, b) => a+b, 0);
+      rolls = sum1 <= sum2 ? rolls : rolls2;
+    }
+    else 
+    {
+      rolls = doRoll();
+    }
+
+    const rollSum = rolls.reduce((a, b) => a+b, 0);
+    const total = rollSum + modifierValue;
+
+    const modeLabel = mode !== "normal" ? `(${mode})`: "";
+    const modPart = modifierLabel ? ` + ${modifierLabel}` : "";
+    const breakDown = `${notation}${modeLabel} = [${rolls.join(", ")}]${modPart} = ${total}`;
+
+    return { rolls, modifier: modifierValue, total, breakDown};
+  }
+
+  // check if roll is needed and execute accordingly
+  function rollCheck()
+  {
+    if (!state.csmsRollPending) return;  // not a roll action, exit early
+
+    if (state.csmsRollPending)
+    {
+      const statMap = {
+        "str": "str", "strength": "str",
+        "dex": "dex", "dexterity": "dex",
+        "con": "con", "constitution": "con",
+        "int": "int", "intelligence": "int",
+        "wis": "wis", "wisdom": "wis",
+        "cha": "cha", "charisma": "cha",
+      };
+
+      const statMatch = text.match(/\b(str(?:ength)?|dex(?:terity)?|con(?:stitution)?|int(?:elligence)?|wis(?:dom)?|cha(?:risma)?)\b/i);
+      const stat = statMatch ? statMap[statMatch[1].toLowerCase()] : null;
+
+      if (stat)
+      {
+        const player = getActivePlayer();
+        const result = resolveRoll(`1d20+${stat.toUpperCase()}`, player, "normal");
+
+        if (!result)
+        {
+          notify("Roll failed — could not resolve dice. Please retry.", "roll failed: resolveRoll returned null");
+          text = text || " ";
+          return;
+        }
+        
+        notify(
+          `You initiated a roll: ${state.csmsRollPending}\n${result.breakDown}`,
+          `roll: ${state.csmsRollPending} | ${result.breakDown}`
+        );
+
+        text = `## Continue the story. The player attempted to ${state.csmsRollPending}. Roll result: ${result.total} (${result.breakDown}).`;
+        state.csmsRollPending = null;
+      }
+      else
+      {
+        // AI didn't respond with a stat — tell player to retry
+        notify(
+          "Roll failed — AI didn't determine a stat. Clear everything and re-type your input",
+          "roll failed: no stat detected"
+        );
+        text = `## A dice roll was requested for "${state.csmsRollPending}". Reply with only one word — the most relevant stat: STR, DEX, CON, INT, WIS, or CHA.`;
+        // Keep state.csmsRollPending set — don't clear it
+      }
+    }
   }
 
   // ==================
@@ -152,18 +313,18 @@ function CSMS(hook)
       isMultiplayerCharacter: cIsMultiplayer,
       level: 1,
       xp: 1,
-      hp: { current: 10, max: 10 },
-      ac: 10,
-      speed: 30,
+      hp: { current: CSMS_CONFIG.DEFAULT_HP, max: CSMS_CONFIG.DEFAULT_HP },
+      ac: CSMS_CONFIG.DEFAULT_AC,
+      speed: CSMS_CONFIG.DEFAULT_SPEED,
       proficiencyBonus: 2,
       canCastSpell: false,
       stats: {
-        str: 10,
-        dex: 10,
-        con: 10,
-        int: 10,
-        wis: 10,
-        cha: 10
+        str: CSMS_CONFIG.DEFAULT_STAT,
+        dex: CSMS_CONFIG.DEFAULT_STAT,
+        con: CSMS_CONFIG.DEFAULT_STAT,
+        int: CSMS_CONFIG.DEFAULT_STAT,
+        wis: CSMS_CONFIG.DEFAULT_STAT,
+        cha: CSMS_CONFIG.DEFAULT_STAT  
       }
     };
   }
@@ -505,6 +666,15 @@ function CSMS(hook)
     }
   }
 
+  function injectStatCheck()
+  {
+    // Roll pending — ask AI what stat applies
+    if (state.csmsRollPending)
+    {
+      text = text.trimEnd() + `\n---\n\n## Reply with only one word — the most relevant stat for "${state.csmsRollPending}": STR, DEX, CON, INT, WIS, or CHA. Nothing else.\n`;
+    }
+  };
+
   // ==================
   // COMMANDS
   // ==================
@@ -644,14 +814,30 @@ function CSMS(hook)
     return `Cleaned up ${orphaned.length} orphaned character sheet(s).`;
   }
 
-  function parseCommand(cText)
+  // Dice engine
+  // Sign action as roll
+  function handleRoll(param)
+  {
+    const action = param.trim();
+
+    if (!action || action === "")
+    {
+      return "No action provided. Usage: /csms roll [action] or [action] /csms roll";
+    }
+
+    state.csmsRollPending = action
+      .replace(/^>?\s*\w+\s+/i, "")   // strip "> You" or "> Nikolai" — any first word
+      .replace(/[^a-zA-Z0-9\s]/g, "") // strip punctuation
+      .trim();
+
+    return null; // silent for now, notification comes after AI responds
+  }
+
+  function parseCommand(cText, fullAction)
   {
     const parts = cText.split(" ");
     const action = parts[1]?.toLowerCase();
     const param = parts.slice(2).join(" ").replace(/[^a-zA-Z0-9\s]/g, "").trim();
-
-    const tempMessage = `Player executed command ${action}`
-    notify(tempMessage, tempMessage);
 
     switch(action)
     {
@@ -660,8 +846,18 @@ function CSMS(hook)
       case "sync": return handleSync(param);
       case "reset":  return handleReset(param);
       case "cleanup": return handleCleanup();
+      case "roll": return handleRoll(fullAction || param);
+      case "test": return handleTest();
       default:       return `Unknown CSMS command. Available: /csms create [name], /csms stats [name], /csms sync [name], /csms reset [name], /csms reset, /csms cleanup`;
     }
+  }
+
+  function handleTest()
+  {
+    const char = findCharacter("Nikolai");
+    log(JSON.stringify(resolveRoll("1d20+STR", char, "normal")));
+    log(JSON.stringify(resolveRoll("2d6", char, "advantage")));
+    log(JSON.stringify(resolveRoll("1d8+3", char, "normal")));
   }
 
   // ==================
@@ -670,12 +866,14 @@ function CSMS(hook)
 
   if (hook === "input")
   {
+    // Zeor or one command, no more
     const csmsMatch = text.match(/\/csms\s+\w+(\s+\S+)*/i);
 
     if (csmsMatch)
     {
-      const result = parseCommand(csmsMatch[0].trim());
-      notify(result, result);
+      const action = text.replace(/\/csms\s+\w+/i, "").trim(); // everything except command
+      const result = parseCommand(csmsMatch[0].trim(), action);
+      if (result) notify(result, result);
     }
   }
 
@@ -689,12 +887,17 @@ function CSMS(hook)
     injectActiveCharacters();
     syncMultiplayerCharacters();
     processTaggedCards();
+
+    if (CSMS_CONFIG.MODULES.COMBAT) injectStatCheck();
   }
 
   if (hook === "output")
   {
     generateNarrativeSheet();
+    if (CSMS_CONFIG.MODULES.COMBAT) rollCheck();
     updateNotification();
+
+    text = text || " ";
   }
 
 }
