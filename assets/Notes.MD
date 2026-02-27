@@ -28,6 +28,7 @@
 - Script doesn't run if AI stutters/lags — player must retry, nothing we can do
 - `.includes()` works fine on strings as long as values are sanitized with `|| ""`
 - New storyCards pushed mid-output don't appear in UI until next action — AID rendering quirk
+- Library functions show up in `globalThis` — confirmed by testing `rollDice`
 
 ### state.memory
 - `state.memory.context` — write to this to override Plot Essentials
@@ -70,6 +71,19 @@
 - Name changes mid-session don't sync instantly across all screens — AID UI lag
 - Input format in third person: `\n> CharacterName action here`
 
+### AI Instruction Injection (Lessons Learned)
+Tested multiple methods for getting AI to produce structured output mid-story:
+
+| Method | Result | Why |
+|---|---|---|
+| `frontMemory` injection | ❌ Ignored | AID positions it AFTER player action — AI already committed to narrating |
+| `text` manipulation | ❌ Ignored | Treated as story continuation, not system instruction |
+| `authorsNote` | ⚠️ Don't touch | World maker territory — would overwrite their notes |
+| Story card entry (keyword match) | ✅ Works | AI treats as established world fact — highest priority |
+| Context hook `##` instruction at end of text | ✅ Works | AI reads as direct instruction before generating |
+
+**Key insight:** For roll stat detection, `##` injected at the END of context (after all story text) works because AI reads sequentially — it sees the instruction right before it generates. For tag system stat detection, same principle applies via frontMemory positioned correctly.
+
 ### Known Bugs / Limitations
 - `stop: true` in input modifier also suppresses player action from displaying
 - Script Test panel unreliable — use PLAY + INSPECT workflow instead
@@ -77,6 +91,7 @@
 - `updateWorldEntry` throws error if index doesn't exist (no longer silent)
 - Inspect panel (Last AI Call) unreliable — use `log()` to verify frontMemory injection
 - New storyCards pushed in output hook don't appear in UI until next player action
+- Harbinger model occasionally outputs extra text alongside stat word — stat regex catches it anyway
 
 ---
 
@@ -112,11 +127,11 @@ AID's native keyword system is unreliable for cross-script compatibility. Direct
 ### Why `state.csmsPending` is a single-item queue
 AI generation happens one at a time — we hijack the entire output for stat generation. Processing multiple simultaneously would cause chaos. One per action is intentional. Multiple tagged cards process sequentially over consecutive actions.
 
-### Why three branches in processTaggedCards
-- Separate CS exists → player already has a sheet, just sync and clean tag
-- Tagged card IS the CS → player put tag on their own sheet, parse and rename
-- No CS anywhere → trigger AI generation
-Each case needs different handling. Clear branching prevents silent wrong behavior.
+### Why player agency instead of automatic roll detection
+Attempted to have AI automatically signal rolls via `[ROLL:XdY+STAT]` tags. Failed — AI ignored all instruction injection methods tested (frontMemory, text manipulation). Player saying `/csms roll` is explicit and reliable. Aligns with TTRPG philosophy: player declares intent to roll, AI determines what stat, script produces the number.
+
+### Why `##` format for roll instructions
+`##` signals to the AI that this is a direct instruction (not story content). Injected at end of context so AI reads it immediately before generating. Two-action flow: action 1 gets the stat, action 2 gets the narrative informed by the result.
 
 ### Why NotifyThem is separate from CSMS
 Independent reusability — other scripters can use NotifyThem without CSMS. Publishable as standalone system. Clean separation of concerns.
@@ -139,12 +154,42 @@ notify(result) — store in state.notifyMessages
 Original player text passes to AI unchanged
     ↓
 Context hook — parseCharacterCard + injectActiveCharacters + syncMultiplayerCharacters + processTaggedCards
+              + stat question injection (if csmsRollPending)
     ↓
-AI generates narrative (or stat response if csmsPending)
+AI generates narrative (or stat response if csmsPending/csmsRollPending)
     ↓
-Output hook — generateNarrativeSheet() + updateNotification()
+Output hook — generateNarrativeSheet() + rollCheck() + updateNotification()
     ↓
-Player sees: [CSMS notification] + AI narrative
+Player sees: [CSMS notification] + AI narrative (or ## instruction if roll pending)
+```
+
+---
+
+## Roll Flow
+
+```
+Player: > You pick the lock /csms roll
+  ↓
+Input hook — strips /csms roll, stores "pick the lock" in state.csmsRollPending
+  ↓
+Context hook — detects csmsRollPending
+Appends: ## Reply with only one word — the most relevant stat for "pick the lock": STR, DEX, CON, INT, WIS, or CHA.
+  ↓
+AI responds: "DEX" (or "Dexterity" or similar)
+  ↓
+Output hook — rollCheck() detects csmsRollPending
+Regex matches stat from AI response
+resolveRoll("1d20+DEX", player, "normal") → { total: 16, breakDown: "1d20+DEX = [14] + DEX(+2) = 16" }
+notify("You initiated a roll: pick the lock\n1d20+DEX = [14] + DEX(+2) = 16")
+text = "## Continue the story. The player attempted to pick the lock. Roll result: 16 (1d20+DEX = [14] + DEX(+2) = 16)."
+state.csmsRollPending = null
+  ↓
+Player sees: [!NOTIFICATION!\nYou initiated a roll: pick the lock\n1d20+DEX = [14] + DEX(+2) = 16]
+             + ## instruction (not shown directly, feeds next AI turn)
+  ↓
+Player presses Continue
+  ↓
+AI reads ## instruction → narrates outcome based on roll result 16
 ```
 
 ---
@@ -210,9 +255,3 @@ assets/
     CSMS_CoverArt.png
 README.md           — Public documentation
 ```
-
----
-
-## Context Recovery (for new Claude sessions)
-Paste this at start of conversation:
-*"Here's our AID CSMS project: [library.js](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/src/library.js) and [Notes.MD](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/assets/Notes.MD). For reference, here's the [AI Dungeon official scripting site](https://help.aidungeon.com/scripting), though it could be outdated. Read all and let's continue from Phase 3."*
