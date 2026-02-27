@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.4.0 — Phase 3 & 4 Complete
+*February 2026*
+
+### Added (Phase 3 — Dice Engine)
+- `rollDice(sides)` — single die roll utility
+- `getModifier(score)` — D&D 5e modifier formula, uses `CSMS_CONFIG.AVERAGE_STAT`
+- `formatMod(mod)` — signed string formatting (`+2`, `-1`, `+0`)
+- `statMod(score)` — convenience wrapper: getModifier + formatMod
+- `resolveRoll(notation, character, mode)` — full roll engine
+  - Parses `XdY+STAT` notation
+  - Supports `normal`, `advantage`, `disadvantage` modes
+  - Returns `{ total, rolls, modifier, breakDown }` object
+  - Breakdown string format: `1d20+DEX = [14] + DEX(+2) = 16`
+- `AVERAGE_STAT: 10` — configurable base for modifier calculation
+- `DEFAULT_STAT: 10` — initial stat value on character creation
+- `DEFAULT_HP`, `DEFAULT_AC`, `DEFAULT_SPEED` — configurable character defaults
+
+### Added (Phase 4 — Roll Command)
+- `/csms roll [action]` command — player-initiated roll
+- `handleRoll(param)` — action text extraction with position-independent command parsing
+- `state.csmsRollPending` — persists action text across hooks during roll flow
+- Context hook stat question injection — prompts AI for single stat word
+- `rollCheck()` — stat detection, roll execution, output replacement
+  - Full/abbreviated stat name matching (Dexterity, DEX, dex all caught)
+  - Roll breakdown notification shown to player
+  - `##` instruction injected for AI narrative on Continue
+  - Retry prompt if AI fails to return a valid stat
+- Multiplayer-compatible action text cleaning — strips `> You` / `> CharacterName` prefixes
+
+### Added (Config)
+- `MODULES` block — `CHARACTER_SHEETS`, `COMBAT`, `FEATS`, `INVENTORY` toggles
+- `INVENTORY: false` — marked as future, not yet implemented
+
+---
+
 ## v1.3.0 — Phase 2 Complete
 *February 2026*
 
