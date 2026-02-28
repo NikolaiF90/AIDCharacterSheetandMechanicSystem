@@ -145,9 +145,9 @@ Player input (any format)
     ↓
 Input hook — regex scan for /csms anywhere in text
     ↓
-parseCommand() — extract action and param
+parseCommand() — split on "/" → action, args1, args2, args3
     ↓
-handle[Action]() — execute, return result string
+handle[Action](args1, args2, args3) — execute, return result string
     ↓
 notify(result) — store in state.notifyMessages
     ↓
@@ -163,33 +163,74 @@ Output hook — generateNarrativeSheet() + rollCheck() + updateNotification()
 Player sees: [CSMS notification] + AI narrative (or ## instruction if roll pending)
 ```
 
+### Command Syntax (v1.5.0+)
+```
+/csms create/Name
+/csms stats/Name
+/csms sync/Name
+/csms reset/Name
+/csms cleanup
+/csms roll/Caller/action          ← solo roll
+/csms roll/Caller/action/Opponent ← opposed roll (Opponent uppercase = NPC, lowercase = object)
+```
+
+### Slash-arg Rules
+- Args split on `/` — multi-word args work naturally: `/csms roll/Nikolai/pick the lock/safe`
+- Uppercase arg3 = living NPC → script searches for character sheet, errors if not found
+- Lowercase arg3 = object → solo roll, no sheet search, AI judges outcome vs context
+- Missing arg3 = solo roll
+
 ---
 
 ## Roll Flow
 
 ```
-Player: > You pick the lock /csms roll
+Player: > You punch the thug /csms roll/Nikolai/punch/Thug
   ↓
-Input hook — strips /csms roll, stores "pick the lock" in state.csmsRollPending
+Input hook — strips /csms roll/Nikolai/punch/Thug
+handleRoll() — caller=Nikolai, action=punch, opponent=Thug (uppercase = NPC)
+findCharacter(Thug) → found → set state.csmsRollPending = { caller, action, oppose }
   ↓
-Context hook — detects csmsRollPending
-Appends: ## Reply with only one word — the most relevant stat for "pick the lock": STR, DEX, CON, INT, WIS, or CHA.
+Context hook — detects csmsRollPending, oppose is set
+Appends:
+## Reply with exactly two lines.
+Line 1: most relevant stat for Nikolai to "punch": STR, DEX, CON, INT, WIS, or CHA.
+Line 2: most relevant stat for Thug to oppose this: STR, DEX, CON, INT, WIS, or CHA.
   ↓
-AI responds: "DEX" (or "Dexterity" or similar)
+AI responds: "STR\nSTR" (or any two stats)
   ↓
 Output hook — rollCheck() detects csmsRollPending
-Regex matches stat from AI response
-resolveRoll("1d20+DEX", player, "normal") → { total: 16, breakDown: "1d20+DEX = [14] + DEX(+2) = 16" }
-notify("You initiated a roll: pick the lock\n1d20+DEX = [14] + DEX(+2) = 16")
-text = "## Continue the story. The player attempted to pick the lock. Roll result: 16 (1d20+DEX = [14] + DEX(+2) = 16)."
+Parses callerStat=STR, opposeStat=STR
+resolveRoll("1d20+STR", Nikolai) → { total: 16, breakDown: "..." }
+resolveRoll("1d20+STR", Thug)   → { total: 9,  breakDown: "..." }
+finalResult = 16 - 9 = 7
+Nikolai wins → resolveDamage(Nikolai, 7) → 1d6+7 = [3]+7 = 10
+applyDamage(Thug, 10) → Thug HP updated → updateCharacterCard(Thug)
+notify(full breakdown)
+text = "## Continue the story. Nikolai attempted to punch. Nikolai rolled 16 against 9 of Thug. Nikolai wins and 10 damage applied to Thug. Thug left with X HP."
 state.csmsRollPending = null
-  ↓
-Player sees: [!NOTIFICATION!\nYou initiated a roll: pick the lock\n1d20+DEX = [14] + DEX(+2) = 16]
-             + ## instruction (not shown directly, feeds next AI turn)
   ↓
 Player presses Continue
   ↓
-AI reads ## instruction → narrates outcome based on roll result 16
+AI reads ## instruction → narrates punch outcome informed by roll result
+```
+
+### Solo Roll Flow
+```
+Player: > You pick the lock /csms roll/Nikolai/pick the lock
+  ↓
+handleRoll() — no arg3 → oppose = null → state.csmsRollPending = { caller, action, oppose: null }
+  ↓
+Context hook — single ## line asking for one stat
+  ↓
+AI responds: "DEX"
+  ↓
+Output hook — rollCheck() solo branch
+resolveRoll("1d20+DEX", Nikolai) → result
+notify(breakdown)
+text = "## Continue the story. Nikolai attempted to pick the lock. Nikolai rolled 14."
+  ↓
+AI narrates — judges success/failure by context (bank safe vs bathroom cabinet)
 ```
 
 ---
@@ -258,7 +299,56 @@ README.md           — Public documentation
 
 ---
 
-## Opposed Roll Design (Planned)
+## Feat System Design (Planned)
+
+### Philosophy
+Feats are written in natural language by world makers — conditions, faction checks, contextual rules. Script cannot parse intent. AI can. Clean boundary:
+- **Script's job:** detect feat usage, inject feat card entry into context, execute any dice rolls, apply damage
+- **AI's job:** read feat rules, judge conditions, decide formula, narrate outcome
+
+### Feat Card Format
+World maker writes feat as a story card. Entry is free-form natural language. No fixed structure required. Example:
+```
+Tactical Reinforcement:
+When engaged in combat, the player may call for reinforcements once per combat.
+Allies arriving = XdY + X.
+X = 1 (other faction territory), 2 (neutral), 3 (allied).
+Y = 2 * player's Wisdom modifier.
+Output the roll breakdown before narrating outcome.
+Player must belong to a faction.
+```
+
+### Script-AI Contract for Feat Rolls
+AI reads feat rules and decides the formula. AI outputs it in a parseable tag:
+```
+[ROLL:XdY+Z]     ← any valid dice notation e.g. [ROLL:3d6+2] or [ROLL:1d8+WIS]
+[DAMAGE:XdY+Z]   ← damage application e.g. [DAMAGE:2d4+1]
+```
+
+Script parses the tag → calls `resolveRoll()` → applies result → feeds result back to AI → AI narrates.
+
+`resolveRoll()` already handles arbitrary notation — feat system gets the dice engine for free.
+
+### Blame Policy
+If AI feeds a valid formula with wrong numbers — that's the feat writer's problem, not the script's. Script's contract is: **if the formula is valid, we calculate it. Period.** 😄
+
+### Why `resolveDamage()` is a wrapper
+Feat damage calls `resolveDamage()` with whatever the AI fed — no special casing needed in the feat system. Feat bonuses and proficiency checks slot in here when feats ship.
+
+### Command (planned)
+```
+/csms feat/FeatName
+```
+Script finds feat card → injects entry into frontMemory/context → AI executes rules → script handles any [ROLL:] or [DAMAGE:] tags in output.
+
+### Open Questions
+- Tag format final decision: `[ROLL:XdY+Z]` vs `[CSMS:ROLL:XdY+Z]` — namespaced safer?
+- Once-per-combat tracking — script tracks combat state, or trust AI?
+- Multiple feat rolls in one output — process sequentially or all at once?
+
+---
+
+## Opposed Roll Design (Implemented — v1.5.0)
 
 ### Why it's needed
 Current system is player-centered — only player rolls. Without opposed rolls, NPC attacks have no mechanical weight. HP never updates from NPC actions. A failed dodge roll is just AI vibes, not a real hit.
