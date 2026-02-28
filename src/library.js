@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.4.0 by PrinceF90
+// v1.5.0 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -29,6 +29,9 @@ const CSMS_CONFIG =
   /*  TECHNICAL */
   LOOKBACK_ACTIONS: 5,      // How many actions back to search for characters
   INJECTED_SHEET_MAX: 20,   // Maximum charater sheet should be loaded
+
+  /* COMBAT (only when combat mechanis is true) */
+  DAMAGE_DIE: 6,    // low fantasy = d4, high combat = d8
   
   /*  TEXT CUSTOMIZATION */
   AUTO_GENERATION_TAG: "[CSMS]",    // System will generate Charater Sheet for cards with this tag
@@ -220,51 +223,123 @@ function CSMS(hook)
   {
     if (!state.csmsRollPending) return;  // not a roll action, exit early
 
-    if (state.csmsRollPending)
+    let closureText = "";
+
+    // Extract for quick call
+    const {caller, action, oppose} = state.csmsRollPending;
+    const statMap = {
+      "str": "str", "strength": "str",
+      "dex": "dex", "dexterity": "dex",
+      "con": "con", "constitution": "con",
+      "int": "int", "intelligence": "int",
+      "wis": "wis", "wisdom": "wis",
+      "cha": "cha", "charisma": "cha",
+    };
+
+    const statMatches = text.match(/\b(str(?:ength)?|dex(?:terity)?|con(?:stitution)?|int(?:elligence)?|wis(?:dom)?|cha(?:risma)?)\b/gi);
+
+    const callerStat = statMatches?.[0] ? statMap[statMatches[0].toLowerCase()] : null;  // first match
+    const opposeStat = statMatches?.[1] ? statMap[statMatches[1].toLowerCase()] : null;  // second match (opposed only)
+    
+    if (!callerStat)
     {
-      const statMap = {
-        "str": "str", "strength": "str",
-        "dex": "dex", "dexterity": "dex",
-        "con": "con", "constitution": "con",
-        "int": "int", "intelligence": "int",
-        "wis": "wis", "wisdom": "wis",
-        "cha": "cha", "charisma": "cha",
-      };
+      // AI didn't respond with a stat — tell player to retry
+      notify(
+        `Roll failed — AI didn't determine a stat for ${caller}. Clear everything and re-type your input`,
+        `roll failed: no stat detected`
+      );
+      /* Keep this for now. Let player manually delete their last input and re-enter it.
+      text = `## A dice roll was requested for "${state.csmsRollPending.action}". Reply with only one word — the most relevant stat: STR, DEX, CON, INT, WIS, or CHA.`;
+      // Keep state.csmsRollPending set — don't clear it
+      */
+      return;
+    }
 
-      const statMatch = text.match(/\b(str(?:ength)?|dex(?:terity)?|con(?:stitution)?|int(?:elligence)?|wis(?:dom)?|cha(?:risma)?)\b/i);
-      const stat = statMatch ? statMap[statMatch[1].toLowerCase()] : null;
+    if (oppose && !opposeStat)
+    {
+      notify(
+        `Roll failed — AI didn't determine a stat for ${oppose}. Clear everything and re-type your input`,
+        `roll failed: no stat detected`
+      );
+      return;
+    }
 
-      if (stat)
+    // Find stat value for caller
+    const cCharacter = findCharacter(caller);
+    // Roll for caller
+    const cResult = resolveRoll(`1d20+${callerStat.toUpperCase()}`, cCharacter, "normal");
+    let finalResult = 0;
+
+    if (oppose)
+    {
+      // VS Character
+      const oCharacter = findCharacter(oppose);
+      // Roll for oppose
+      const oResult = resolveRoll(`1d20+${opposeStat}`, oCharacter, "normal");
+      
+      // Stop invalid roll
+      if (!cResult || !oResult)
       {
-        const player = getActivePlayer();
-        const result = resolveRoll(`1d20+${stat.toUpperCase()}`, player, "normal");
+        notify("Roll failed — could not resolve dice. Please retry.", "roll failed: resolveRoll returned null");
+        text = text || " ";
+        return;
+      }
 
-        if (!result)
-        {
-          notify("Roll failed — could not resolve dice. Please retry.", "roll failed: resolveRoll returned null");
-          text = text || " ";
-          return;
-        }
-        
+      // Compare
+      finalResult = cResult.total - oResult.total;
+      
+      if (cResult.total === oResult.total)
+      {
+        // Tie
         notify(
-          `You initiated a roll: ${state.csmsRollPending}\n${result.breakDown}`,
-          `roll: ${state.csmsRollPending} | ${result.breakDown}`
-        );
+          `${caller} initiated a roll: ${cResult.breakDown}`,
+          `${caller} roll: ${cResult.breakDown}`);
+        notify(
+          `${oppose} initiated a roll: ${oResult.breakDown}`,
+          `${oppose} roll: ${oResult.breakDown}`);
+        notify("Both rolls result a TIE");
+        closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose} resulting a TIE.`;
+      }
+      else if (cResult.total > oResult.total)
+      {
+        // Caller win
+        const damage = resolveDamage(cCharacter, Math.abs(finalResult));
+        notify(`
+          ${caller}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${oppose}
+          `, `Damage roll: ${damage.breakDown}
+        `);
+        // Apply damage
+        const remainingHP = applyDamage(oCharacter, damage.total);       
 
-        text = `## Continue the story. The player attempted to ${state.csmsRollPending}. Roll result: ${result.total} (${result.breakDown}).`;
-        state.csmsRollPending = null;
+        // AI doesnt have to know full break down. Just who wins with what points and who left with what points.
+        closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose}. ${caller} wins and ${damage.total} damage point applied to ${oppose}. ${oppose} left with ${remainingHP} HP.`;
       }
       else
       {
-        // AI didn't respond with a stat — tell player to retry
-        notify(
-          "Roll failed — AI didn't determine a stat. Clear everything and re-type your input",
-          "roll failed: no stat detected"
-        );
-        text = `## A dice roll was requested for "${state.csmsRollPending}". Reply with only one word — the most relevant stat: STR, DEX, CON, INT, WIS, or CHA.`;
-        // Keep state.csmsRollPending set — don't clear it
+        // Oppose win
+        const damage = resolveDamage(oCharacter, Math.abs(finalResult));
+        notify(`
+          ${oppose}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${caller}
+          `, `Damage roll: ${damage.breakDown}
+        `);
+        // Apply damage
+        const remainingHP = applyDamage(cCharacter, damage.total);
+
+        closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose}. ${oppose} wins and ${damage.total} damage point applied to ${caller}. ${caller} left with ${remainingHP} HP.`;
       }
     }
+    else
+    {
+      notify(
+        `${caller} initiated a roll: ${cResult.breakDown}`,
+        `roll: ${cResult.breakDown}`
+      );
+      closureText = `${caller} rolled ${cResult.total} to ${action}.`;
+    }
+
+    // Give instructions to player and GM
+    text = `## Continue the story. ${caller} attempted to ${action}. ${closureText}`;
+    state.csmsRollPending = null;
   }
 
   // ==================
@@ -300,6 +375,39 @@ function CSMS(hook)
 
   // Always check for ghost
   syncMultiplayerCharacters();
+
+  // ==================
+  // COMBAT
+  // ==================  
+  
+  function applyDamage(character, damage)
+  {
+    const cHP = character.hp.current;
+    let fHP = cHP - damage;
+
+    // Set to threshold
+    if (fHP <= 0) { fHP = 0 }
+
+    // apply hp
+    character.hp.current = fHP;
+    notify(
+      `${character.name}'s HP: ${cHP} => ${fHP}`,
+      `${character.name}'s HP: ${fHP}`
+    );
+    updateCharacterCard(character);
+
+    // No need to inform of dead. Some doesn't prefer permadeath. HP 0 =/= dead.
+    return character.hp.current;
+  }
+
+  function resolveDamage(character, bonus)
+  {
+    const die = rollDice(CSMS_CONFIG.DAMAGE_DIE);
+    const total = die + bonus;
+    const breakDown = `1d${CSMS_CONFIG.DAMAGE_DIE}+${bonus} = [${die}] + ${bonus} = ${total}`;
+
+    return {total: total, breakDown: breakDown};
+  }
 
   // ==================
   // CHARACTER
@@ -668,10 +776,16 @@ function CSMS(hook)
 
   function injectStatCheck()
   {
-    // Roll pending — ask AI what stat applies
-    if (state.csmsRollPending)
+    if (!state.csmsRollPending) return;
+    const { caller, action, oppose } = state.csmsRollPending;
+    if (state.csmsRollPending.oppose)
     {
-      text = text.trimEnd() + `\n---\n\n## Reply with only one word — the most relevant stat for "${state.csmsRollPending}": STR, DEX, CON, INT, WIS, or CHA. Nothing else.\n`;
+      // VS NPC
+      text = text.trimEnd() + `\n---\n\n## Reply with exactly two lines.\nLine 1: most relevant stat for ${caller} to "${action}": STR, DEX, CON, INT, WIS, or CHA.\nLine 2: most relevant stat for ${oppose} to oppose this: STR, DEX, CON, INT, WIS, or CHA. Nothing else.\n`;
+    }
+    else
+    {
+      text = text.trimEnd() + `\n---\n\n## Reply with only one word — the most relevant stat for ${caller} to "${action}": STR, DEX, CON, INT, WIS, or CHA. Nothing else.\n`
     }
   };
 
@@ -816,39 +930,53 @@ function CSMS(hook)
 
   // Dice engine
   // Sign action as roll
-  function handleRoll(param)
+  function handleRoll(caller, action, opponent)
   {
-    const action = param.trim();
+    // Stop incomplete command
+    if (!caller || !action) return "Command failed to execute. Incomplete arguments. At least caller and action needed: /csms roll/caller/action/opponent";
 
-    if (!action || action === "")
+    if (!findCharacter(caller)) return `No character sheet found for ${caller}. Create with /csms create/${caller} , then try again`;
+
+    let vs = null;
+    if (opponent !== "")
     {
-      return "No action provided. Usage: /csms roll [action] or [action] /csms roll";
+      // Could be npc or object
+      if (opponent.charAt(0) === opponent.charAt(0).toUpperCase() && opponent.charAt(0) !== opponent.charAt(0).toLowerCase())
+      {
+        // Character - then look for CS
+        if (!findCharacter(opponent)) return `No character sheet found for ${opponent}. Create with /csms create/${opponent} , then try again`;
+        
+        vs = opponent;
+      }
     }
-
-    state.csmsRollPending = action
-      .replace(/^>?\s*\w+\s+/i, "")   // strip "> You" or "> Nikolai" — any first word
-      .replace(/[^a-zA-Z0-9\s]/g, "") // strip punctuation
-      .trim();
-
-    return null; // silent for now, notification comes after AI responds
+    state.csmsRollPending = 
+    {
+      caller: caller,
+      action: action,
+      oppose: vs,
+    };
+    
+    return null; // Silent for now, Notification comes later
   }
 
-  function parseCommand(cText, fullAction)
+  function parseCommand(cText)
   {
-    const parts = cText.split(" ");
-    const action = parts[1]?.toLowerCase();
-    const param = parts.slice(2).join(" ").replace(/[^a-zA-Z0-9\s]/g, "").trim();
+    const parts   = cText.split("/");
+    const action  = parts[1]?.toLowerCase().trim();
+    const args1   = parts[2]?.trim() || "";
+    const args2   = parts[3]?.trim() || "";
+    const args3   = parts[4]?.trim() || "";
 
     switch(action)
     {
-      case "create": return handleCreate(param);
-      case "stats":  return handleStats(param);
-      case "sync": return handleSync(param);
-      case "reset":  return handleReset(param);
+      case "create":  return handleCreate(args1);
+      case "stats":   return handleStats(args1);
+      case "sync":    return handleSync(args1);
+      case "reset":   return handleReset(args1);
       case "cleanup": return handleCleanup();
-      case "roll": return handleRoll(fullAction || param);
-      case "test": return handleTest();
-      default:       return `Unknown CSMS command. Available: /csms create [name], /csms stats [name], /csms sync [name], /csms reset [name], /csms reset, /csms cleanup`;
+      case "roll":    return handleRoll(args1, args2, args3);
+      case "test":    return handleTest();
+      default:        return `Unknown CSMS command. Available: /csms create [name], /csms stats [name], /csms sync [name], /csms reset [name], /csms reset, /csms cleanup`;
     }
   }
 
@@ -871,8 +999,7 @@ function CSMS(hook)
 
     if (csmsMatch)
     {
-      const action = text.replace(/\/csms\s+\w+/i, "").trim(); // everything except command
-      const result = parseCommand(csmsMatch[0].trim(), action);
+      const result = parseCommand(csmsMatch[0].trim());
       if (result) notify(result, result);
     }
   }
