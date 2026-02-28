@@ -255,3 +255,60 @@ assets/
     CSMS_CoverArt.png
 README.md           — Public documentation
 ```
+
+---
+
+## Opposed Roll Design (Planned)
+
+### Why it's needed
+Current system is player-centered — only player rolls. Without opposed rolls, NPC attacks have no mechanical weight. HP never updates from NPC actions. A failed dodge roll is just AI vibes, not a real hit.
+
+Opposed roll closes the loop:
+- Player rolls DEX (dodge) → 6
+- Guard rolls STR (attack) → 15
+- Guard wins by 9 → hit confirmed by script, HP updates, AI narrates
+
+### Proposed AI response format
+Two separate `##` instructions, each asking for one thing:
+
+```
+## Reply with only one word — the most relevant stat for "{action}": STR, DEX, CON, INT, WIS, or CHA.
+## If this action is contested by an NPC, reply OPPOSED:NPCName (first name only). If not, reply SOLO.
+```
+
+AI responds on two lines:
+```
+DEX
+OPPOSED:Guard
+```
+
+### Why two separate blocks instead of pipe format
+Pipe format `DEX | true | Guard` is too complex — AI adds narrative, ignores format, hallucinates fields. Proven from tag system experience. Single-concept responses per line are what reliably survives.
+
+### Parsing
+```js
+const opposedMatch = text.match(/OPPOSED:(\w+)/i);
+const isOpposed = !!opposedMatch;
+const npcName = opposedMatch ? opposedMatch[1] : null;
+// SOLO or anything without OPPOSED: = simple roll, current flow unchanged
+```
+
+### Open questions
+- What if NPC name has spaces (Guard Captain)? `\w+` breaks — instruction says first name only as mitigation
+- After script determines winner — does HP update automatically or just feed result to AI?
+- DC checks (fixed threshold) still undesigned — park until after opposed rolls ship
+
+### DC vs AC vs Opposed (quick reference)
+| Type | Example | Both sides roll? |
+|---|---|---|
+| DC check | Pick a lock (DC 15) | ❌ Player rolls vs fixed number |
+| AC check | Attack someone | ❌ Attacker rolls vs defender's static AC |
+| Opposed roll | Dodge a punch | ✅ Both sides roll, higher wins |
+
+Opposed roll is the priority — it's what makes NPC actions mechanically real.
+
+---
+
+## Context Recovery (for new Claude sessions)
+Paste this at start of conversation:
+*"Here's our AID CSMS project: [library.js](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/src/library.js) and [Notes.MD](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/assets/Notes.MD). For reference, here's the [AI Dungeon official scripting site](https://help.aidungeon.com/scripting), though it could be outdated. Read all and let's continue from Phase 5."*
