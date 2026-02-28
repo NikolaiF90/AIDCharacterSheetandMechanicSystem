@@ -306,9 +306,3 @@ const npcName = opposedMatch ? opposedMatch[1] : null;
 | Opposed roll | Dodge a punch | ✅ Both sides roll, higher wins |
 
 Opposed roll is the priority — it's what makes NPC actions mechanically real.
-
----
-
-## Context Recovery (for new Claude sessions)
-Paste this at start of conversation:
-*"Here's our AID CSMS project: [library.js](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/src/library.js) and [Notes.MD](https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/assets/Notes.MD). For reference, here's the [AI Dungeon official scripting site](https://help.aidungeon.com/scripting), though it could be outdated. Read all and let's continue from Phase 5."*
