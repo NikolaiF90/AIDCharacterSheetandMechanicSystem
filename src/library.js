@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.5.0 by PrinceF90
+// v1.5.1 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -13,7 +13,7 @@ const CSMS_CONFIG =
   {
     CHARACTER_SHEETS: true,   // includes tag system + context injection
     COMBAT: true,             // uses dice internally, needs CHARACTER_SHEETS
-    FEATS: false,             // uses dice internally, needs CHARACTER_SHEETS          // Future - not yet implemented
+    ORDINANCE:true,           // uses dice internally, needs 
     INVENTORY: false,         // Future - not yet implemented
   },
 
@@ -245,9 +245,8 @@ function CSMS(hook)
     {
       // AI didn't respond with a stat — tell player to retry
       notify(
-        `Roll failed — AI didn't determine a stat for ${caller}. Clear everything and re-type your input`,
-        `roll failed: no stat detected`
-      );
+        `Roll failed — AI didn't determine a stat for ${caller}. Clear everything and re-type your input`, 
+        `roll failed: no stat detected`);
       /* Keep this for now. Let player manually delete their last input and re-enter it.
       text = `## A dice roll was requested for "${state.csmsRollPending.action}". Reply with only one word — the most relevant stat: STR, DEX, CON, INT, WIS, or CHA.`;
       // Keep state.csmsRollPending set — don't clear it
@@ -258,9 +257,8 @@ function CSMS(hook)
     if (oppose && !opposeStat)
     {
       notify(
-        `Roll failed — AI didn't determine a stat for ${oppose}. Clear everything and re-type your input`,
-        `roll failed: no stat detected`
-      );
+        `Roll failed — AI didn't determine a stat for ${oppose}. Clear everything and re-type your input`, 
+        `roll failed: no stat detected`);
       return;
     }
 
@@ -287,16 +285,19 @@ function CSMS(hook)
 
       // Compare
       finalResult = cResult.total - oResult.total;
+
+      notify(
+        `${caller}'s roll: ${cResult.breakDown}`,
+        `${caller} roll: ${cResult.breakDown}`
+      );
+      notify(
+        `${oppose}'s roll: ${oResult.breakDown}`,
+        `${oppose} roll: ${oResult.breakDown}`
+      );
       
       if (cResult.total === oResult.total)
       {
         // Tie
-        notify(
-          `${caller} initiated a roll: ${cResult.breakDown}`,
-          `${caller} roll: ${cResult.breakDown}`);
-        notify(
-          `${oppose} initiated a roll: ${oResult.breakDown}`,
-          `${oppose} roll: ${oResult.breakDown}`);
         notify("Both rolls result a TIE");
         closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose} resulting a TIE.`;
       }
@@ -304,10 +305,9 @@ function CSMS(hook)
       {
         // Caller win
         const damage = resolveDamage(cCharacter, Math.abs(finalResult));
-        notify(`
-          ${caller}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${oppose}
-          `, `Damage roll: ${damage.breakDown}
-        `);
+        notify(
+          `${caller}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${oppose}`, 
+          `Damage roll: ${damage.breakDown}`);
         // Apply damage
         const remainingHP = applyDamage(oCharacter, damage.total);       
 
@@ -318,10 +318,9 @@ function CSMS(hook)
       {
         // Oppose win
         const damage = resolveDamage(oCharacter, Math.abs(finalResult));
-        notify(`
-          ${oppose}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${caller}
-          `, `Damage roll: ${damage.breakDown}
-        `);
+        notify(
+          `${oppose}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${caller}`, 
+          `Damage roll: ${damage.breakDown}`);
         // Apply damage
         const remainingHP = applyDamage(cCharacter, damage.total);
 
@@ -369,7 +368,9 @@ function CSMS(hook)
       const character = initCharacter(charName, isFirstPlayer, true);
       state.characters.push(character);
       updateCharacterCard(character);
-      notify(`Character sheet auto-created for ${charName}`, `auto-created: ${charName}`);
+      notify(
+        `Character sheet auto-created for ${charName}`, 
+        `auto-created: ${charName}`);
     });
   }
 
@@ -391,9 +392,8 @@ function CSMS(hook)
     // apply hp
     character.hp.current = fHP;
     notify(
-      `${character.name}'s HP: ${cHP} => ${fHP}`,
-      `${character.name}'s HP: ${fHP}`
-    );
+      `${character.name}'s HP: ${cHP} => ${fHP}`, 
+      `${character.name}'s HP: ${fHP}`);
     updateCharacterCard(character);
 
     // No need to inform of dead. Some doesn't prefer permadeath. HP 0 =/= dead.
@@ -490,7 +490,9 @@ function CSMS(hook)
       const index = state.characters.indexOf(c);
       state.characters.splice(index, 1);
       removeCharacterCard(c.name);
-      notify(`Character sheet removed for ${c.name} (left or renamed).`, `removed: ${c.name}`);
+      notify(
+        `Character sheet removed for ${c.name} (left or renamed).`, 
+        `removed: ${c.name}`);
     });
   }
 
@@ -511,7 +513,7 @@ function CSMS(hook)
     const errors = [];
 
     // Helper - validate and fallback
-    function safeInt(value, fallback, label)
+    function safeInt(value, fallback, label, useStatLimit = true)
     {
       const parsed = parseInt(value);
       
@@ -521,7 +523,8 @@ function CSMS(hook)
         return fallback;
       }
 
-      if (parsed < CSMS_CONFIG.STAT_MIN || parsed > CSMS_CONFIG.STAT_MAX)
+      // Keep things in reasonable range
+      if (useStatLimit && (parsed < CSMS_CONFIG.STAT_MIN || parsed > CSMS_CONFIG.STAT_MAX))
       {
         errors.push(`${label}: ${parsed} out of range (${CSMS_CONFIG.STAT_MIN}-${CSMS_CONFIG.STAT_MAX}). Kept ${fallback}.`);
         return fallback;
@@ -535,25 +538,25 @@ function CSMS(hook)
     if (line1)
     {
       c.name = line1[1].trim() || c.name;
-      c.level = safeInt(line1[2], c.level, "Level");
-      c.xp = safeInt(line1[3], c.xp, "XP");
+      c.level = safeInt(line1[2], c.level, "Level", false);
+      c.xp = safeInt(line1[3], c.xp, "XP", false);
     }
 
     // Line 2 - HP: 10/10 | AC: 10 | Speed: 30ft
     const line2 = lines[1]?.match(/\w+:\s*(\S+)\/(\S+)\s*\|\s*\w+:\s*(\S+)\s*\|\s*\w+:\s*(\S+)/i);
     if (line2 && c.hp)
     {
-      c.hp.current = safeInt(line2[1], c.hp.current, "HP Current");
-      c.hp.max = safeInt(line2[2], c.hp.max, "HP Max");
-      c.ac = safeInt(line2[3], c.ac, "AC");
-      c.speed = safeInt(line2[4], c.speed, "Speed");
+      c.hp.current = safeInt(line2[1], c.hp.current, "HP Current", false);
+      c.hp.max = safeInt(line2[2], c.hp.max, "HP Max", false);
+      c.ac = safeInt(line2[3], c.ac, "AC", false);
+      c.speed = safeInt(line2[4], c.speed, "Speed", false);
     }
 
     // Line 3 - Proficiency: +2
     const line3 = lines[2]?.match(/\w+:\s*(\S+)/i);
     if (line3)
     {
-      c.proficiencyBonus = safeInt(line3[1], c.proficiencyBonus, "Proficiency");
+      c.proficiencyBonus = safeInt(line3[1], c.proficiencyBonus, "Proficiency", false);
     }
 
     // Line 5 — str: 10 (+0)  dex: 10 (+0)  con: 10 (+0)
@@ -577,7 +580,9 @@ function CSMS(hook)
     // Notify of any errors
     if (errors.length > 0)
     {
-      notify(`Card sync errors for ${c.name}:\n- ${errors.join("\n- ")}`, `sync errors: ${errors.join(" | ")}`);
+      notify(
+        `Card sync errors for ${c.name}:\n- ${errors.join("\n- ")}`, 
+        `sync errors: ${errors.join(" | ")}`);
     }
 
     updateCharacterCard(c);
@@ -745,7 +750,9 @@ function CSMS(hook)
         state.csmsPending = null;
         text = text.replace(/STR:\s*\d+\s*DEX:\s*\d+\s*CON:\s*\d+\s*INT:\s*\d+\s*WIS:\s*\d+\s*CHA:\s*\d+\s*HP:\s*\d+\s*AC:\s*\d+/i, "").trim();
 
-        notify(`Character sheet generated for ${name}!`, `generated: ${name}`);
+        notify(
+          `Character sheet generated for ${name}!`, 
+          `generated: ${name}`);
       }
     }
   }
@@ -785,8 +792,63 @@ function CSMS(hook)
     }
     else
     {
-      text = text.trimEnd() + `\n---\n\n## Reply with only one word — the most relevant stat for ${caller} to "${action}": STR, DEX, CON, INT, WIS, or CHA. Nothing else.\n`
+      text = text.trimEnd() + `\n---\n\n## Reply with only one word — the most relevant stat for ${caller} to "${action}": STR, DEX, CON, INT, WIS, or CHA. Nothing else.\n`;
     }
+  };
+
+  // ==================
+  // ORDINANCE
+  // ==================
+
+  function processOrdinanceTags()
+  {
+    // [ROLL: 1d20+2] or [Roll: 2d6]
+    const rollMatch = text.match(/\[ROLL:([^\]]+)\]/i);
+    // [DAMAGE: 5] or [Damage: 100]
+    const damageMatch = text.match(/\[DAMAGE:(\d+)\]/i);
+    // [CHARACTER: Name]
+    const nameMatch = text.match(/\[CHARACTER:([^\]]+)\]/i);
+    // Extract notation and damage
+    const notation = rollMatch?.[1];
+    const damage = damageMatch?.[1];
+    const character = nameMatch?.[1];
+    
+    // Run only if exist. Remain silent if nothing found
+    if (notation)
+    {
+      const result = resolveRoll(notation, null, "normal");
+      notify(
+        `Roll result: ${result.breakDown}`,
+        `Roll result: ${result.breakDown}`);
+      text = text.replace(/\[ROLL:[^\]]+\]/i, `[Roll result: ${result.total}]`);
+    }
+
+    // Unstable - Remain for testing
+    if (damage)
+    {
+      const cCharacter = findCharacter(character);
+
+      if (!cCharacter)
+      {
+        notify(
+          `No Character Sheet found for ${character}`,
+          `No Character Sheet found for ${character}`);
+        return;
+      }
+
+      const hp = applyDamage(cCharacter, parseInt(damage));
+      text = text.replace(/\[DAMAGE:(\d+)\]/i, `${character} took ${damage} damage. ${character}'s remaining HP is ${hp}.`)
+    }
+  };
+
+  function injectOrdinanceCheck()
+  {
+    if (!state.csmsOrdinancePending) return;
+
+    // Base foundation as of 2/3/26. Will expand in the future
+    text = text.trimEnd() + `\n---\n\n {entry: ${state.csmsOrdinancePending.entry}}\n\n## Reply with exactly one or more lines.\nLine 1: ROLL: XdY+Z.\nLine 2: DAMAGE: Integer of damage dealt.\nLine 3: CHARACTER: Name character user use ordinance against. Nothing else.\n`;
+
+    state.csmsOrdinancePending = null;
   };
 
   // ==================
@@ -935,7 +997,7 @@ function CSMS(hook)
     // Stop incomplete command
     if (!caller || !action) return "Command failed to execute. Incomplete arguments. At least caller and action needed: /csms roll/caller/action/opponent";
 
-    if (!findCharacter(caller)) return `No character sheet found for ${caller}. Create with /csms create/${caller} , then try again`;
+    if (!findCharacter(caller)) return `No character sheet found for "${caller}". Remember: /csms roll/CallerName/action/opponent`;
 
     let vs = null;
     if (opponent !== "")
@@ -959,24 +1021,52 @@ function CSMS(hook)
     return null; // Silent for now, Notification comes later
   }
 
+  function handleOrdinance(ordinanceName)
+  {
+    // We dont want to shuffle through every cards that exist
+    const allOrds = storyCards.filter(card => card.type === "Ordinance");
+    if (allOrds.length === 0) return "No Ordinance found. Please create one by creating a new story card and set the type to CUSTOM and Ordinance for the custom type";
+    
+    // Find match
+    const ordCard = allOrds.find(card => card.title.toLowerCase() === ordinanceName.toLowerCase());
+    if (!ordCard) return `Ordinance ${ordinanceName} not found. Please create one by creating a new story card and set the type to CUSTOM and Ordinance for the custom type`;
+
+    // Get the entry
+    const ordinanceEntry = ordCard.entry;
+    
+    state.csmsOrdinancePending = 
+    {
+      name: ordinanceName,
+      entry: ordinanceEntry,
+    }
+
+    return `Ordinance "${ordinanceName}" activated.`;
+  }
+
+  //--------------------------
+  //
+  //--------------------------
+
   function parseCommand(cText)
   {
     const parts   = cText.split("/");
-    const action  = parts[1]?.toLowerCase().trim();
-    const args1   = parts[2]?.trim() || "";
-    const args2   = parts[3]?.trim() || "";
-    const args3   = parts[4]?.trim() || "";
+    const commandIndentifiers = parts[1]?.trim().split(/\s+/);
+    const action  = commandIndentifiers?.[1]?.toLowerCase().replace(/[.,!?"]+$/, "") || "";
+    const args1   = parts[2]?.trim().replace(/[.,!?"]+$/, "") || "";
+    const args2   = parts[3]?.trim().replace(/[.,!?"]+$/, "") || "";
+    const args3   = parts[4]?.trim().replace(/[.,!?"]+$/, "") || "";
 
     switch(action)
     {
-      case "create":  return handleCreate(args1);
-      case "stats":   return handleStats(args1);
-      case "sync":    return handleSync(args1);
-      case "reset":   return handleReset(args1);
-      case "cleanup": return handleCleanup();
-      case "roll":    return handleRoll(args1, args2, args3);
-      case "test":    return handleTest();
-      default:        return `Unknown CSMS command. Available: /csms create [name], /csms stats [name], /csms sync [name], /csms reset [name], /csms reset, /csms cleanup`;
+      case "create":      return handleCreate(args1);
+      case "stats":       return handleStats(args1);
+      case "sync":        return handleSync(args1);
+      case "reset":       return handleReset(args1);
+      case "cleanup":     return handleCleanup();
+      case "roll":        return handleRoll(args1, args2, args3);
+      case "ordinance":   return handleOrdinance(args1);
+      case "test":        return handleTest();
+      default:            return `Unknown CSMS command. "/csms help" for list of available commands`;
     }
   }
 
@@ -995,7 +1085,8 @@ function CSMS(hook)
   if (hook === "input")
   {
     // Zeor or one command, no more
-    const csmsMatch = text.match(/\/csms\s+\w+(\s+\S+)*/i);
+    const csmsMatch = text.match(/\/csms[^\n]*/i);
+    log(`csmsMatch: ${csmsMatch}`);
 
     if (csmsMatch)
     {
@@ -1016,12 +1107,14 @@ function CSMS(hook)
     processTaggedCards();
 
     if (CSMS_CONFIG.MODULES.COMBAT) injectStatCheck();
+    if (CSMS_CONFIG.MODULES.ORDINANCE) injectOrdinanceCheck();
   }
 
   if (hook === "output")
   {
     generateNarrativeSheet();
     if (CSMS_CONFIG.MODULES.COMBAT) rollCheck();
+    if (CSMS_CONFIG.MODULES.ORDINANCE) processOrdinanceTags();
     updateNotification();
 
     text = text || " ";
