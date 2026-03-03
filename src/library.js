@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.5.1 by PrinceF90
+// v1.5.2 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -14,7 +14,7 @@ const CSMS_CONFIG =
     CHARACTER_SHEETS: true,   // includes tag system + context injection
     COMBAT: true,             // uses dice internally, needs CHARACTER_SHEETS
     ORDINANCE:true,           // uses dice internally, needs 
-    INVENTORY: false,         // Future - not yet implemented
+    INVENTORY: true,         // Future - not yet implemented
   },
 
   /*  STATS */
@@ -615,7 +615,7 @@ function CSMS(hook)
         title: cardTitle,
         keys: `csms_cs_${c.name}, ${CSMS_CONFIG.TEMP_TRIGGER}`,
         entry: cEntry,
-        description: `CSMS Character Sheet - ${c.name}`
+        description: ""
       });
     }
   }
@@ -802,54 +802,143 @@ function CSMS(hook)
 
   function processOrdinanceTags()
   {
-    // [ROLL: 1d20+2] or [Roll: 2d6]
-    const rollMatch = text.match(/\[ROLL:([^\]]+)\]/i);
-    // [DAMAGE: 5] or [Damage: 100]
-    const damageMatch = text.match(/\[DAMAGE:(\d+)\]/i);
-    // [CHARACTER: Name]
-    const nameMatch = text.match(/\[CHARACTER:([^\]]+)\]/i);
-    // Extract notation and damage
-    const notation = rollMatch?.[1];
-    const damage = damageMatch?.[1];
-    const character = nameMatch?.[1];
-    
-    // Run only if exist. Remain silent if nothing found
-    if (notation)
+    if (!state.csmsOrdinancePending) return;
+
+    // DEBUG
+    log(`ordinance raw output: ${text}`);
+
+    // Step 1 — Find dice pattern anywhere in text (XdY or XdY+Z or XdY+STAT)
+    const diceMatch = text.match(/\b(\d+d\d+(?:[+-][a-zA-Z]+)?)\b/i);
+    const notation = diceMatch?.[1];
+
+    // Tier 1 — no dice at all
+    if (!notation)
     {
-      const result = resolveRoll(notation, null, "normal");
       notify(
-        `Roll result: ${result.breakDown}`,
-        `Roll result: ${result.breakDown}`);
-      text = text.replace(/\[ROLL:[^\]]+\]/i, `[Roll result: ${result.total}]`);
+        "No dice provided — ordinance executed as narrative",
+        "ordinance: no dice pattern found");
+      state.csmsOrdinancePending = null;
+      return;
     }
 
-    // Unstable - Remain for testing
-    if (damage)
+    // Resolve the roll
+    const result = resolveRoll(notation, null, "normal");
+    notify(
+      `Ordinance roll: ${result.breakDown}`,
+      `ordinance roll: ${result.breakDown}`);
+
+    const continueText = `## Continue the story incorporating the ordinance result. Roll result: ${result.total}.`
+
+    // Step 2 — Find damage: number near "damage" or "dmg"
+    const damageMatch = text.match(/\b(\d+)\s+(?:damage|dmg)\b(?!\s+(?:was|is|has|had|been|from|to\s+(?:you|him|her|them|it)))/i);
+    const damage = damageMatch?.[1] ?? damageMatch?.[2];
+
+    // Tier 2 — no damage
+    if (!damage)
     {
-      const cCharacter = findCharacter(character);
-
-      if (!cCharacter)
-      {
-        notify(
-          `No Character Sheet found for ${character}`,
-          `No Character Sheet found for ${character}`);
-        return;
-      }
-
-      const hp = applyDamage(cCharacter, parseInt(damage));
-      text = text.replace(/\[DAMAGE:(\d+)\]/i, `${character} took ${damage} damage. ${character}'s remaining HP is ${hp}.`)
+      notify(
+        "No damage specified — roll resolved, no HP change",
+        "ordinance: no damage tag found");
+      text = continueText;
+      
+      state.csmsOrdinancePending = null;
+      
+      return;
     }
-  };
+
+    // Step 3 — Find target: pending target hint first, then "against [Name]" / "to [Name]"
+    const pendingTarget = state.csmsOrdinancePending?.target || null;
+    const narrativeMatch = text.match(/(?:against|to)\s+([A-Z][a-z]+)/);
+    const character = pendingTarget || narrativeMatch?.[1] || null;
+
+    // Tier 3 — no target
+    if (!character)
+    {
+      notify(
+        "No target found — damage not applied",
+        "ordinance: no target found");
+      text = continueText;
+      
+      state.csmsOrdinancePending = null;
+      
+      return;
+    }
+
+    // All present — apply damage
+    const cCharacter = findCharacter(character);
+    if (!cCharacter)
+    {
+      notify(
+        `No character sheet found for "${character}" — damage not applied`,
+        "ordinance: character not in state");
+      text = continueText;
+      
+      state.csmsOrdinancePending = null;
+      
+      return;
+    }
+
+    const hp = applyDamage(cCharacter, parseInt(damage));
+    notify(
+      `${character} took ${damage} damage. Remaining HP: ${hp}`,
+      `ordinance: damage applied`);
+    
+    text = continueText;
+
+    state.csmsOrdinancePending = null;
+  }
 
   function injectOrdinanceCheck()
   {
     if (!state.csmsOrdinancePending) return;
 
-    // Base foundation as of 2/3/26. Will expand in the future
-    text = text.trimEnd() + `\n---\n\n {entry: ${state.csmsOrdinancePending.entry}}\n\n## Reply with exactly one or more lines.\nLine 1: ROLL: XdY+Z.\nLine 2: DAMAGE: Integer of damage dealt.\nLine 3: CHARACTER: Name character user use ordinance against. Nothing else.\n`;
+    const { entry, target } = state.csmsOrdinancePending;
+    const targetHint = target ? `\nThe target of this ordinance is: ${target}.` : "";
 
-    state.csmsOrdinancePending = null;
-  };
+    text = text.trimEnd() + `\n---\n\n{entry: ${entry}}${targetHint}\n\n## Reply with exactly one or more lines.\nLine 1: ROLL: XdY+Z.\nLine 2: DAMAGE: Integer of damage dealt.\nLine 3: CHARACTER: Name character user use ordinance against. Nothing else.\n`;
+  }
+
+  // ==================
+  // INVENTORY
+  // ==================
+
+  function parseInventory(character)
+  {
+    const c = character;
+    const card = storyCards.find(card => card.title === `📋 ${c.name}`);
+    if (!card)
+    {
+      notify(`No character sheet found for ${c.name}`, `inventory: no card found`);
+    
+      return;
+    }
+
+    const description = card.description || "";
+    const inventoryStart = description.indexOf("[Inventory]");
+
+    if (inventoryStart === -1)
+    {
+      notify(`No [Inventory] block found for ${c.name}`, `inventory: no block found`);
+      return;
+    }
+
+    const inventoryBlock = description.slice(inventoryStart);
+    const lines = inventoryBlock.split("\n");
+    const items = [];
+
+    // push inventory to data
+    for (const line of lines)
+    {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("notes ")) contine; // preserve, skip
+      if (trimmed.startsWith("- ")) items.push(trimmed.slice(2).trim());
+    }
+
+    c.inventory = items;
+    notify(
+    `Inventory synced for ${c.name}: ${items.length} item(s)`,
+    `inventory: synced ${items.length} items`);
+  }
 
   // ==================
   // COMMANDS
@@ -1021,7 +1110,7 @@ function CSMS(hook)
     return null; // Silent for now, Notification comes later
   }
 
-  function handleOrdinance(ordinanceName)
+  function handleOrdinance(ordinanceName, targetName)
   {
     // We dont want to shuffle through every cards that exist
     const allOrds = storyCards.filter(card => card.type === "Ordinance");
@@ -1038,9 +1127,19 @@ function CSMS(hook)
     {
       name: ordinanceName,
       entry: ordinanceEntry,
+      target: targetName || null,
     }
 
-    return `Ordinance "${ordinanceName}" activated.`;
+    return `Ordinance "${ordinanceName}" executed.`;
+  }
+
+  function handleUpdateInventory(name)
+  {
+    const c = name ? findCharacter(name) : getActivePlayer();
+    if (!c) return `No character named ${name} found.`;
+    parseInventory(c);
+
+    return `${c.name}'s inventory synced.`;
   }
 
   //--------------------------
@@ -1058,13 +1157,16 @@ function CSMS(hook)
 
     switch(action)
     {
+      case "update":
+      if (args1 === "inventory")  return handleUpdateInventory(args2);
+      if (args1 === "stats")      return handleSync(args2);
+      return `Unknown update target. Use "stats" or "inventory"`;
       case "create":      return handleCreate(args1);
-      case "stats":       return handleStats(args1);
       case "sync":        return handleSync(args1);
       case "reset":       return handleReset(args1);
       case "cleanup":     return handleCleanup();
       case "roll":        return handleRoll(args1, args2, args3);
-      case "ordinance":   return handleOrdinance(args1);
+      case "ordinance":   return handleOrdinance(args1,args2);
       case "test":        return handleTest();
       default:            return `Unknown CSMS command. "/csms help" for list of available commands`;
     }
