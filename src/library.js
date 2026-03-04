@@ -1162,7 +1162,6 @@ function CSMS(hook)
       if (args1 === "stats")      return handleSync(args2);
       return `Unknown update target. Use "stats" or "inventory"`;
       case "create":      return handleCreate(args1);
-      case "sync":        return handleSync(args1);
       case "reset":       return handleReset(args1);
       case "cleanup":     return handleCleanup();
       case "roll":        return handleRoll(args1, args2, args3);
