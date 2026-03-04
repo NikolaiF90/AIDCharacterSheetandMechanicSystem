@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.5.2 — Phase 5 Complete
+*March 2026*
+
+### Added (Phase 5 — Ordinance Skeleton)
+- `ORDINANCE` module toggle in `CSMS_CONFIG.MODULES`
+- `/csms ordinance/OrdinanceName/TargetName` — trigger an Ordinance against a target
+- `handleOrdinance(param)` — parses Ordinance name and target from command
+- Ordinance card lookup — finds story card by name match
+- `##` instruction injection — feeds Ordinance card entry + target context to AI
+- Multi-step execution flow — AI judges DAMAGING vs NON-DAMAGING before any roll fires
+- `[DAMAGE:XdY+Z]` tag parsing in output hook — script calculates, never AI
+- `applyDamage()` — applies resolved damage to target character HP
+- Blame policy enforced — valid format executes, wrong numbers are writer's responsibility
+
+### Added (Phase 5 — Inventory MVP)
+- Inventory stored in CS card `description` (Notes) field — no character limit, no separate card
+- `[Inventory]` block format — dash list, duplicate items as separate entries, optional inline `notes "..."`
+- `/csms update/inventory/CharacterName` — syncs inventory from Notes field to `state`
+- `/csms update/stats/CharacterName` — renamed from `sheet`, syncs stats from Entry field
+- `state.characters[i].inventory[]` — inventory array per character in state
+- `parseInventory(card)` — reads Notes field, extracts item array, preserves annotations
+
+### Renamed
+- `FEATS` module → `ORDINANCE` in `CSMS_CONFIG.MODULES`
+- `/csms update/sheet` → `/csms update/stats` — sheet refers to the card, not a command target
+
+---
+
 ## v1.4.0 — Phase 3 & 4 Complete
 *February 2026*
 
@@ -30,7 +58,7 @@
 - Multiplayer-compatible action text cleaning — strips `> You` / `> CharacterName` prefixes
 
 ### Added (Config)
-- `MODULES` block — `CHARACTER_SHEETS`, `COMBAT`, `FEATS`, `INVENTORY` toggles
+- `MODULES` block — `CHARACTER_SHEETS`, `COMBAT`, `ORDINANCE`, `INVENTORY` toggles
 - `INVENTORY: false` — marked as future, not yet implemented
 
 ---
