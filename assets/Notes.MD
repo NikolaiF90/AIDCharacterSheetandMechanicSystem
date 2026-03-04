@@ -386,16 +386,44 @@ Fix: roll result must be passed INTO Ordinance execution context. Each step feed
 - AI misinterprets ordinance entry → writer's problem (write better)
 - Script's contract: **valid format = we calculate it. Period.**
 
+---
+
+## Inventory Format
+
+### Item list
+```
+[Inventory]
+- dark blazer
+- BMW keys
+- note "Meet at X at noon"
+- crumpled paper "The bigger is coming"
+- glass bottle
+- glass bottle
+```
+
+### Key rules
+- `[Inventory]` block header — script looks for this
+- Each `- item` = one array element
+- Duplicate items = separate lines. No `x3` stacking.
+- Items with inline text use quoted format — `- note "Meet at X at noon"` or `- crumpled paper "The bigger is coming"`. These are **actual items**, not annotations. The quoted text is part of the item name. Script reads the full string as one item. AI reads and understands the content.
+- No special annotation syntax — everything is just an item
+
+---
+
 ### Parked for Later
-- Ordinance caller — currently assumes active player. Future: `/csms ordinance/OrdinanceName/TargetName/CallerName` for explicit caller. How to handle this cleanly is an open question.
 - Ordinance assigned to character sheet — CS should list which ordinances each character has access to
-- Active vs passive Ordinance types
-  - Active = player triggers explicitly via command
-  - Passive = hooks into narrative detection — fires automatically when condition is met in AI output
+- Passive Ordinance types — fires automatically when condition is met in AI output, no command needed
 - How a character "learns" or "unlocks" an Ordinance
 - Once-per-combat tracking
 - Multiple Ordinance rolls in one output — sequential or simultaneous?
-- Tag format: `[DAMAGE:XdY+Z]` vs `[CSMS:DAMAGE:XdY+Z]` — namespaced safer?
+- NONDAMAGING per-card damage detection flag — card entry contains `DAMAGE_DETECTION: true` to opt in
+- **Config Card System (Phase 7)** — a story card (`📋 CSMS Config`) that acts as a live config panel. Script reads it on every action and overrides `CSMS_CONFIG` values. World makers and players can toggle settings mid-game without touching script code. Example:
+```
+Title:  📋 CSMS Config
+Entry:  ORD_ND_DAMAGE_DETECTION: true
+        ORD_PROXIMITY: 60
+        DEBUG_MODE: false
+```
 
 ---
 
