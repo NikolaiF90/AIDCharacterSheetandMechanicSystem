@@ -1,140 +1,1491 @@
-# Changelog
+// ============================================
+// CSMS - Character Stats and Mechanics System
+// v1.6.0 by PrinceF90
+// Visit https://github.com/NikolaiF90?tab=repositories
+// Include this header if you're using this script in your scenario
+// ============================================
 
-## v1.5.2 — Phase 5 Complete
-*March 2026*
+// Edit this field as your preference
+const CSMS_CONFIG =
+{
+  // Module toggles
+  MODULES:
+  {
+    CHARACTER_SHEETS: true,   // includes tag system + context injection
+    COMBAT: true,             // uses dice internally, needs CHARACTER_SHEETS
+    ORDINANCE:true,           // uses dice internally, needs 
+    INVENTORY: true,         // Future - not yet implemented
+  },
 
-### Added (Phase 5 — Ordinance Skeleton)
-- `ORDINANCE` module toggle in `CSMS_CONFIG.MODULES`
-- `/csms ordinance/OrdinanceName/TargetName` — trigger an Ordinance against a target
-- `handleOrdinance(param)` — parses Ordinance name and target from command
-- Ordinance card lookup — finds story card by name match
-- `##` instruction injection — feeds Ordinance card entry + target context to AI
-- Multi-step execution flow — AI judges DAMAGING vs NON-DAMAGING before any roll fires
-- `[DAMAGE:XdY+Z]` tag parsing in output hook — script calculates, never AI
-- `applyDamage()` — applies resolved damage to target character HP
-- Blame policy enforced — valid format executes, wrong numbers are writer's responsibility
+  /*  STATS */
+  STAT_MAX: 50,         // Maximum value for any stats
+  STAT_MIN: 1,          // Minimum value for any stats
+  AVERAGE_STAT: 10,     // Average character stats
+  DEFAULT_STAT: 10,     // Default value assigned to stat without customisation
+  DEFAULT_HP: 10,       // Default value assigned to Health Points
+  DEFAULT_AC: 10,       // DEfault value assigned to Armor Class
+  DEFAULT_SPEED: 30,    // Default value assigned to Speed
 
-### Added (Phase 5 — Inventory MVP)
-- Inventory stored in CS card `description` (Notes) field — no character limit, no separate card
-- `[Inventory]` block format — dash list, duplicate items as separate entries, optional inline `notes "..."`
-- `/csms update/inventory/CharacterName` — syncs inventory from Notes field to `state`
-- `/csms update/stats/CharacterName` — renamed from `sheet`, syncs stats from Entry field
-- `state.characters[i].inventory[]` — inventory array per character in state
-- `parseInventory(card)` — reads Notes field, extracts item array, preserves annotations
+  /*  TECHNICAL */
+  LOOKBACK_ACTIONS: 5,      // How many actions back to search for characters
+  INJECTED_SHEET_MAX: 20,   // Maximum charater sheet should be loaded
 
-### Renamed
-- `FEATS` module → `ORDINANCE` in `CSMS_CONFIG.MODULES`
-- `/csms update/sheet` → `/csms update/stats` — sheet refers to the card, not a command target
+  /* COMBAT (only when combat mechanis is true) */
+  DAMAGE_DIE: 6,    // low fantasy = d4, high combat = d8
 
----
+  /* ORDINANCE */
+  ORD_ERROR: "⚠ ORDINANCE ERROR\n",    // Header for Ordinance error message
+  ORD_PROXIMITY: 50,                    // Word window for narraive damage detection
+  ORD_DEFAULT_ROLL: "1d20",             // fallback when AI doesn't provide notation
+  
+  /*  TEXT CUSTOMIZATION */
+  AUTO_GENERATION_TAG: "[CSMS]",    // System will generate Charater Sheet for cards with this tag
+  TEMP_TRIGGER: "github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem",
+  BANNED_NAMES: ["you", "adventurer"],
+}
 
-## v1.4.0 — Phase 3 & 4 Complete
-*February 2026*
+const NOTIFY_CONFIG = 
+{
+  NOTIFICATION_HEADER: "!NOTIFICATION!",   // Header message
+  DEBUG_MODE: true,   // For developer only
+}
 
-### Added (Phase 3 — Dice Engine)
-- `rollDice(sides)` — single die roll utility
-- `getModifier(score)` — D&D 5e modifier formula, uses `CSMS_CONFIG.AVERAGE_STAT`
-- `formatMod(mod)` — signed string formatting (`+2`, `-1`, `+0`)
-- `statMod(score)` — convenience wrapper: getModifier + formatMod
-- `resolveRoll(notation, character, mode)` — full roll engine
-  - Parses `XdY+STAT` notation
-  - Supports `normal`, `advantage`, `disadvantage` modes
-  - Returns `{ total, rolls, modifier, breakDown }` object
-  - Breakdown string format: `1d20+DEX = [14] + DEX(+2) = 16`
-- `AVERAGE_STAT: 10` — configurable base for modifier calculation
-- `DEFAULT_STAT: 10` — initial stat value on character creation
-- `DEFAULT_HP`, `DEFAULT_AC`, `DEFAULT_SPEED` — configurable character defaults
+// ============================================
+// ORDINANCE DAMAGE TIERS
+// Word lists for narrative damage detection
+// Highest matching tier wins
+// ============================================
 
-### Added (Phase 4 — Roll Command)
-- `/csms roll [action]` command — player-initiated roll
-- `handleRoll(param)` — action text extraction with position-independent command parsing
-- `state.csmsRollPending` — persists action text across hooks during roll flow
-- Context hook stat question injection — prompts AI for single stat word
-- `rollCheck()` — stat detection, roll execution, output replacement
-  - Full/abbreviated stat name matching (Dexterity, DEX, dex all caught)
-  - Roll breakdown notification shown to player
-  - `##` instruction injected for AI narrative on Continue
-  - Retry prompt if AI fails to return a valid stat
-- Multiplayer-compatible action text cleaning — strips `> You` / `> CharacterName` prefixes
+const CSMS_ORD_TIERS =
+{
+  glancing:  
+  {
+    range: [0.02, 0.06], words: 
+    ["graze", "brush", "glance", "clip", "nick", "scratch", "tap", "flick", "skim"] 
+  },
+  solid:     
+  {
+    range: [0.06, 0.14], words: 
+    ["hit", "strike", "cut", "slash", "jab", "smack", "thud", "crack", "connect", "land"] 
+  },
+  heavy:     
+  {
+    range: [0.14, 0.22], words: 
+    ["slam", "drive", "pierce", "gouge", "pound", "crash", "pummel", "hammer", "thrust"]
+  },
+  fierce:    
+  {
+    range: [0.22, 0.35], words: 
+    ["maul", "rend", "tear", "cleave", "devastate", "batter", "wrench", "savage", "shatter"]
+  },
+  brutal:    
+  {
+    range: [0.35, 0.50], words: 
+    ["obliterate", "annihilate", "pulverize", "rupture", "eviscerate", "decimate", "destroy"]
+  },
+  lethal:    
+  {
+    range: [0.60, 0.75], words: 
+    ["sever", "impale", "disembowel", "split", "incinerate", "disintegrate", "liquefy"]
+  },
+};
 
-### Added (Config)
-- `MODULES` block — `CHARACTER_SHEETS`, `COMBAT`, `ORDINANCE`, `INVENTORY` toggles
-- `INVENTORY: false` — marked as future, not yet implemented
+// ============================================
+// NotifyThem - An AID dynamic notification and logging system made by programmer for programmer
+// v1.0.0 by PrinceF90
+//
+// How to use:
+// Put initNotify() in your Library initiliazation
+// Put updateNotification() in your Output script
+// Use notify(STRING, STRING) to add your message 
+// Visit https://github.com/NikolaiF90?tab=repositories
+// Include this header if you're using this script in your scenario
+// ============================================
 
----
+function initNotify ()
+{
+  if (state.notifyDebugMode === undefined) { state.notifyDebugMode = NOTIFY_CONFIG.DEBUG_MODE }
+}
 
-## v1.3.0 — Phase 2 Complete
-*February 2026*
+function notify(sMessage, dMessage = "")
+{
+  if (!state.notifyMessages) { state.notifyMessages = [NOTIFY_CONFIG.NOTIFICATION_HEADER] }
+  // store messages for later output
+  state.notifyMessages.push(sMessage);
 
-### Added
-- `isCharacterSheet(card, name)` — identifies valid CS cards by `📋` emoji OR `csms_cs_` key
-- `getTaggedCards()` — scans storyCards for `AUTO_GENERATION_TAG` prefix
-- `getTaggedName(card)` — extracts clean name from tagged card, strips emoji and tag
-- `processTaggedCards()` — full tag detection and branching logic, runs in context hook
-- `generateNarrativeSheet()` — output hook intercepts AI stat response, creates sheet silently
-- `state.csmsPending` — single-item generation queue, one character at a time
-- `AUTO_GENERATION_TAG: "[CSMS]"` — configurable tag in `CSMS_CONFIG`
-- Three-branch tag processing — handles separate CS / tagged card is CS / no CS cases
-- Stats stripped from visible output after generation — player never sees raw stat string
-- Tag removed from original card title after sheet generated
+  let debugMessage;
+  // Debug messages will always shown real-time
+  if (state.notifyDebugMode && dMessage !== "")
+  {
+    const time = new Date();
+    const timeStamp = `${time.getDate()}/${time.getMonth() +1}/${time.getFullYear()} ${time.getHours()}:${time.getMinutes()}`;
+    
+    debugMessage = `[${timeStamp}]NOTIFY DEBUG LOG: ${dMessage}`
+    log(debugMessage);
+  }
+}
 
-### Fixed
-- Empty string guard in multiplayer auto-create — prevents blank sheets from empty `info.characters` entries
+// Update the whole notification and feed it into the game
+// Recommended to use only once, on the output script
+function updateNotification()
+{
+  if (state.notifyMessages && state.notifyMessages.length > 1) 
+    {
+      const notiMessage = `[${state.notifyMessages.join("\n")}]`;
+      text = `${notiMessage}\n\n${text}`;
+      resetNotification();
+    }
+}
 
----
+function resetNotification()
+{
+  if (state.notifyMessages) {state.notifyMessages = [NOTIFY_CONFIG.NOTIFICATION_HEADER]}
+}
 
-## v1.2.0 — Phase 1.5 Complete
-*February 2026*
+// ============================================
+// End of script
+// ============================================
 
-### Added
-- `parseCharacterCard(character)` — position-based SC parser, label-agnostic regex
-- `safeInt()` — value validation with fallback and error notification
-- `/csms sync [name]` — manual sync story card edits to state
-- Auto-sync on every context hook run
-- `injectActiveCharacters()` — compact character data injected into `frontMemory`
-- `getActivePlayer()` — detects active player from input text in multiplayer
-- `syncMultiplayerCharacters()` — removes sheets for players who left or renamed
-- `isMultiplayerCharacter` flag on character objects — protects NPCs from multiplayer sync
-- Multiplayer auto-create — sheets created automatically when players join
-- `STAT_MIN`, `STAT_MAX` — stat range validation in `CSMS_CONFIG`
-- `LOOKBACK_ACTIONS` — history scan depth for character detection in `CSMS_CONFIG`
-- `INJECTED_SHEET_MAX` — max sheets injected per action in `CSMS_CONFIG`
-- `BANNED_NAMES` — invalid name protection in `CSMS_CONFIG`
-- `canCastSpell: false` flag — added to `initCharacter()` for future spell system
-- SC keyword placeholder `csms_cs_${name}` — AC-safe card trigger keys
 
-### Fixed
-- `handleReset()` now uses `storedName` for card removal — fixes case mismatch bug
-- `handleCleanup()` `length` typo fixed
+function CSMS(hook)
+{
+  // ==================
+  // UTILITIES
+  // ==================
 
----
+  function rollDice(sides)
+  {
+    return Math.floor(Math.random() * sides) + 1;
+  }
+  // Calculate the modifier
+  function getModifier(score)
+  {
+    return Math.floor((score - CSMS_CONFIG.AVERAGE_STAT) / 2);
+  }
+  // give the + sign if modifier more than 0
+  function formatMod(mod)
+  {
+    return mod >= 0 ? `+${mod}` : `${mod}`;
+  }
+  // calculate stat modifier, and return the result in string
+  function statMod(score)
+  {
+    return formatMod(getModifier(score));
+  }
 
-## v1.0.0 — Phase 1 Complete
-*February 2026*
+  // ============================================
+  // DICE ENGINE — internal infrastructure
+  // ============================================
 
-### Added
-- `CSMS()` function with input/context/output hooks
-- `/csms create [name]` — character creation
-- `/csms stats [name]` — character sheet refresh
-- `/csms reset [name]` — remove specific character
-- `/csms reset` — remove all characters
-- `/csms cleanup` — remove orphaned story cards
-- `state.characters[]` — multi-character persistent storage
-- `initCharacter()` — D&D 5e stat foundation
-- `findCharacter()` — case-insensitive name search
-- `getPlayer()` — quick player character access
-- `updateCharacterCard(character)` — dynamic story card sync
-- `removeCharacterCard(name)` — story card removal
-- Individual story cards per character (`📋 Name`)
-- Regex-based command detection — works in do/say/normal input
-- Punctuation stripping from command parameters
-- `storedName` fix — case-safe card removal
-- `CSMS_CONFIG` — world maker configuration block
 
-### Added (NotifyThem v1.0.0)
-- `initNotify()` — debug mode initialization
-- `notify(sMessage, dMessage)` — message storage + debug logging
-- `updateNotification()` — flush messages to output as `[bracketed]` block
-- `resetNotification()` — clear message queue
-- `NOTIFY_CONFIG` — header and debug mode configuration
-- Timestamped debug logs via `log()`
+  function resolveRoll(notation, character, mode)
+  {
+    // Default mode
+    mode = mode || "normal";
+
+    // Parse notation - e.g. "1d20+STR", "2d6", "1d8+3"
+    const match = notation.match(/^(\d+)d(\d+)(?:\+([a-zA-Z0-9]+))?$/i);
+    if (!match) return null;
+
+    const numDice = parseInt(match[1]);
+    const dieSides = parseInt(match[2]);
+    const modRaw = match [3] || null;  // "STR", "3", null
+
+    // Resolve modifier - check if its a state name or flat number
+    let modifierValue = 0;
+    let modifierLabel = "";
+
+    if (modRaw)
+    {
+      if (!isNaN(parseInt(modRaw)))
+      {
+        // Flat number - "1d8+3"
+        modifierValue = parseInt(modRaw);
+        modifierLabel = `${modifierValue}`;
+      } 
+      else if (character)
+      {
+        // Stat name - "1d20+STR"
+        const stat = character.stats[modRaw.toLowerCase()];
+        if (stat !== undefined)
+        {
+          modifierValue = getModifier(stat);
+          const formatted = formatMod(modifierValue); 
+          modifierLabel = `${modRaw.toUpperCase()}(${formatted})`;
+        }
+      }
+    }
+
+    function doRoll()
+    {
+      const results = [];
+      for (let i = 0; i < numDice; i++)
+      {
+        /*
+        let result = rollDice();
+        results.push(result);
+        */
+        results.push(rollDice(dieSides));
+      }
+      return results;
+    }
+
+    let rolls, rolls2;
+
+    if (mode === "advantage")
+    {
+      rolls = doRoll();
+      rolls2 = doRoll();
+      const sum1 = rolls.reduce((a, b) => a+b, 0);
+      const sum2 = rolls2.reduce((a, b) => a+b, 0);
+      rolls = sum1 >= sum2 ? rolls : rolls2;
+    }
+    else if (mode === "disadvantage")
+    {
+      rolls = doRoll();
+      rolls2 = doRoll();
+      const sum1 = rolls.reduce((a, b) => a+b, 0);
+      const sum2 = rolls2.reduce((a, b) => a+b, 0);
+      rolls = sum1 <= sum2 ? rolls : rolls2;
+    }
+    else 
+    {
+      rolls = doRoll();
+    }
+
+    const rollSum = rolls.reduce((a, b) => a+b, 0);
+    const total = rollSum + modifierValue;
+
+    const modeLabel = mode !== "normal" ? `(${mode})`: "";
+    const modPart = modifierLabel ? ` + ${modifierLabel}` : "";
+    const breakDown = `${notation}${modeLabel} = [${rolls.join(", ")}]${modPart} = ${total}`;
+
+    return { rolls, modifier: modifierValue, total, breakDown};
+  }
+
+  // check if roll is needed and execute accordingly
+  function rollCheck()
+  {
+    if (!state.csmsRollPending) return;  // not a roll action, exit early
+
+    let closureText = "";
+
+    // Extract for quick call
+    const {caller, action, oppose} = state.csmsRollPending;
+    const statMap = {
+      "str": "str", "strength": "str",
+      "dex": "dex", "dexterity": "dex",
+      "con": "con", "constitution": "con",
+      "int": "int", "intelligence": "int",
+      "wis": "wis", "wisdom": "wis",
+      "cha": "cha", "charisma": "cha",
+    };
+
+    const statMatches = text.match(/\b(str(?:ength)?|dex(?:terity)?|con(?:stitution)?|int(?:elligence)?|wis(?:dom)?|cha(?:risma)?)\b/gi);
+
+    const callerStat = statMatches?.[0] ? statMap[statMatches[0].toLowerCase()] : null;  // first match
+    const opposeStat = statMatches?.[1] ? statMap[statMatches[1].toLowerCase()] : null;  // second match (opposed only)
+    
+    if (!callerStat)
+    {
+      // AI didn't respond with a stat — tell player to retry
+      notify(
+        `Roll failed — AI didn't determine a stat for ${caller}. Clear everything and re-type your input`, 
+        `roll failed: no stat detected`);
+      /* Keep this for now. Let player manually delete their last input and re-enter it.
+      text = `## A dice roll was requested for "${state.csmsRollPending.action}". Reply with only one word — the most relevant stat: STR, DEX, CON, INT, WIS, or CHA.`;
+      // Keep state.csmsRollPending set — don't clear it
+      */
+      return;
+    }
+
+    if (oppose && !opposeStat)
+    {
+      notify(
+        `Roll failed — AI didn't determine a stat for ${oppose}. Clear everything and re-type your input`, 
+        `roll failed: no stat detected`);
+      return;
+    }
+
+    // Find stat value for caller
+    const cCharacter = findCharacter(caller);
+    // Roll for caller
+    const cResult = resolveRoll(`1d20+${callerStat.toUpperCase()}`, cCharacter, "normal");
+    let finalResult = 0;
+
+    if (oppose)
+    {
+      // VS Character
+      const oCharacter = findCharacter(oppose);
+      // Roll for oppose
+      const oResult = resolveRoll(`1d20+${opposeStat}`, oCharacter, "normal");
+      
+      // Stop invalid roll
+      if (!cResult || !oResult)
+      {
+        notify("Roll failed — could not resolve dice. Please retry.", "roll failed: resolveRoll returned null");
+        text = text || " ";
+        return;
+      }
+
+      // Compare
+      finalResult = cResult.total - oResult.total;
+
+      notify(
+        `${caller}'s roll: ${cResult.breakDown}`,
+        `${caller} roll: ${cResult.breakDown}`
+      );
+      notify(
+        `${oppose}'s roll: ${oResult.breakDown}`,
+        `${oppose} roll: ${oResult.breakDown}`
+      );
+      
+      if (cResult.total === oResult.total)
+      {
+        // Tie
+        notify("Both rolls result a TIE");
+        closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose} resulting a TIE.`;
+      }
+      else if (cResult.total > oResult.total)
+      {
+        // Caller win
+        const damage = resolveDamage(cCharacter, Math.abs(finalResult));
+        notify(
+          `${caller}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${oppose}`, 
+          `Damage roll: ${damage.breakDown}`);
+        // Apply damage
+        const remainingHP = applyDamage(oCharacter, damage.total);       
+
+        // AI doesnt have to know full break down. Just who wins with what points and who left with what points.
+        closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose}. ${caller} wins and ${damage.total} damage point applied to ${oppose}. ${oppose} left with ${remainingHP} HP.`;
+      }
+      else
+      {
+        // Oppose win
+        const damage = resolveDamage(oCharacter, Math.abs(finalResult));
+        notify(
+          `${oppose}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${caller}`, 
+          `Damage roll: ${damage.breakDown}`);
+        // Apply damage
+        const remainingHP = applyDamage(cCharacter, damage.total);
+
+        closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose}. ${oppose} wins and ${damage.total} damage point applied to ${caller}. ${caller} left with ${remainingHP} HP.`;
+      }
+    }
+    else
+    {
+      notify(
+        `${caller} initiated a roll: ${cResult.breakDown}`,
+        `roll: ${cResult.breakDown}`
+      );
+      closureText = `${caller} rolled ${cResult.total} to ${action}.`;
+    }
+
+    // Give instructions to player and GM
+    text = `## Continue the story. ${caller} attempted to ${action}. ${closureText}`;
+    state.csmsRollPending = null;
+  }
+
+  // ==================
+  // INITIALIZATION
+  // ==================
+  initNotify();
+
+  if (state.characters === undefined)
+  {
+    state.characters = [];
+  }
+
+  // Create CS for new player
+  if (info.characters && info.characters.length > 0)
+  {
+    info.characters.forEach(charName =>
+    {
+      if (!charName || charName.trim() === "") return;
+      // Skip banned names
+      if (CSMS_CONFIG.BANNED_NAMES.indexOf(charName.toLowerCase()) !== -1) return;
+
+      // Skip if already exists
+      if (findCharacter(charName)) return;
+
+      // First character created is the player
+      const isFirstPlayer = state.characters.length === 0;
+      const character = initCharacter(charName, isFirstPlayer, true);
+      state.characters.push(character);
+      updateCharacterCard(character);
+      notify(
+        `Character sheet auto-created for ${charName}`, 
+        `auto-created: ${charName}`);
+    });
+  }
+
+  // Always check for ghost
+  syncMultiplayerCharacters();
+
+  // ==================
+  // COMBAT
+  // ==================  
+  
+  function applyDamage(character, damage)
+  {
+    const cHP = character.hp.current;
+    let fHP = cHP - damage;
+
+    // Set to threshold
+    if (fHP <= 0) { fHP = 0 }
+
+    // apply hp
+    character.hp.current = fHP;
+    notify(
+      `${character.name}'s HP: ${cHP} => ${fHP}`, 
+      `${character.name}'s HP: ${fHP}`);
+    updateCharacterCard(character);
+
+    // No need to inform of dead. Some doesn't prefer permadeath. HP 0 =/= dead.
+    return character.hp.current;
+  }
+
+  function resolveDamage(character, bonus)
+  {
+    const die = rollDice(CSMS_CONFIG.DAMAGE_DIE);
+    const total = die + bonus;
+    const breakDown = `1d${CSMS_CONFIG.DAMAGE_DIE}+${bonus} = [${die}] + ${bonus} = ${total}`;
+
+    return {total: total, breakDown: breakDown};
+  }
+
+  // Generate damage from narrative
+  function detectNarrativeDamage(output, callerName, targetName, callerMaxHp, targetMaxHp)
+  {
+    const words         = output.toLowerCase().split(/\s+/);
+    const callerLow     = callerName.toLowerCase();
+    const targetLow     = targetName.toLowerCase();
+    const callerPronouns = ["you", "your", "i ", "i'm", "i've", "my", "me"];
+
+    const result = { caller: null, target: null };
+
+    // ---- EXPLICIT NUMBER DETECTION ----
+    const explicitMatch = output.match(/(\d+)\s*(?:damage|dmg|hp|points?)\b/i)
+                      || output.match(/dealt?\s+(\d+)/i)
+                      || output.match(/loses?\s+(\d+)/i);
+
+    if (explicitMatch)
+    {
+      const dmg      = parseInt(explicitMatch[1]);
+      const matchIdx = output.toLowerCase().indexOf(explicitMatch[0].toLowerCase());
+      const before   = output.toLowerCase().slice(Math.max(0, matchIdx - 60), matchIdx);
+
+      const isTargetHit = before.includes(targetLow);
+      const isCallerHit = before.includes(callerLow)
+                      || callerPronouns.some(p => before.includes(p));
+
+      if (isTargetHit)
+      {
+        result.target = { tier: "explicit", damage: dmg };
+      }
+      else if (isCallerHit)
+      {
+        result.caller = { tier: "explicit", damage: dmg };
+      }
+
+      return result;
+    }
+
+    // ---- TIER WORD DETECTION ----
+    const tierOrder = ["lethal", "brutal", "fierce", "heavy", "solid", "glancing"];
+
+    for (const tierName of tierOrder)
+    {
+      const tier = CSMS_ORD_TIERS[tierName];
+
+      for (const word of tier.words)
+      {
+        const wordIdx = output.toLowerCase().search(new RegExp(`\\b${word}\\b`));
+        if (wordIdx === -1) continue;
+
+        // Who appears in the 60 characters AFTER the damage word?
+        const after = output.toLowerCase().slice(wordIdx, wordIdx + 60);
+
+        const isTargetHit = after.includes(targetLow);
+        const isCallerHit = after.includes(callerLow)
+                        || callerPronouns.some(p => after.includes(p));
+
+        if (isTargetHit && !result.target)
+        {
+          const [min, max] = tier.range;
+          const dmg = Math.max(1, Math.round(targetMaxHp * (min + Math.random() * (max - min))));
+          result.target = { tier: tierName, damage: dmg };
+        }
+        else if (isCallerHit && !result.caller)
+        {
+          const [min, max] = tier.range;
+          const dmg = Math.max(1, Math.round(callerMaxHp * (min + Math.random() * (max - min))));
+          result.caller = { tier: tierName, damage: dmg };
+        }
+
+        // Both found — no need to keep scanning
+        if (result.caller && result.target) break;
+      }
+      
+      if (result.caller && result.target) break;
+    }
+
+    return result;
+  }
+
+  // ==================
+  // CHARACTER
+  // ==================
+
+  function initCharacter(cName, cIsPlayer = false, cIsMultiplayer = false)
+  {
+    return {
+      name: cName,
+      isPlayer: cIsPlayer,
+      isMultiplayerCharacter: cIsMultiplayer,
+      level: 1,
+      xp: 1,
+      hp: { current: CSMS_CONFIG.DEFAULT_HP, max: CSMS_CONFIG.DEFAULT_HP },
+      ac: CSMS_CONFIG.DEFAULT_AC,
+      speed: CSMS_CONFIG.DEFAULT_SPEED,
+      proficiencyBonus: 2,
+      canCastSpell: false,
+      stats: {
+        str: CSMS_CONFIG.DEFAULT_STAT,
+        dex: CSMS_CONFIG.DEFAULT_STAT,
+        con: CSMS_CONFIG.DEFAULT_STAT,
+        int: CSMS_CONFIG.DEFAULT_STAT,
+        wis: CSMS_CONFIG.DEFAULT_STAT,
+        cha: CSMS_CONFIG.DEFAULT_STAT  
+      }
+    };
+  }
+
+  // Find any character from global namespace by name
+  function findCharacter(name)
+  {
+    return state.characters.find(
+      c => c.name.toLowerCase() === name.toLowerCase()
+    );
+  }
+
+  // Find and return player from list of characters in global namespace
+  function getPlayer()
+  {
+    return state.characters.find(c => c.isPlayer === true);
+  }
+
+  // Find player that execute the action
+  function getActivePlayer()
+  {
+    // Singleplayer — just return the player
+    if (!info.characters || info.characters.length === 0)
+    {
+      return getPlayer();
+    }
+
+    // Multiplayer — detect from input text
+    const inputText = text.trim();
+    for (const charName of info.characters)
+    {
+      if (inputText.indexOf(`> ${charName}`) !== -1)
+      {
+        return findCharacter(charName);
+      }
+    }
+
+    // Fallback
+    return getPlayer();
+  }
+
+  // Remove ghost data and CS
+  function syncMultiplayerCharacters()
+  {
+    if (!info.characters || info.characters.length === 0) return;
+
+    // Find state characters that are multiplayer but no longer in info.characters
+    const toRemove = state.characters.filter(c =>
+      c.isMultiplayerCharacter === true &&
+      info.characters.indexOf(c.name) === -1
+    );
+
+    toRemove.forEach(c =>
+    {
+      const index = state.characters.indexOf(c);
+      state.characters.splice(index, 1);
+      removeCharacterCard(c.name);
+      notify(
+        `Character sheet removed for ${c.name} (left or renamed).`, 
+        `removed: ${c.name}`);
+    });
+  }
+
+  // ==================
+  // STORY CARD
+  // ==================
+
+  // Update character state data by value from CS
+  function parseCharacterCard(character)
+  {
+    const c = character;
+    const card = storyCards.find(card => card.title === `📋 ${c.name}`);
+    if (!card) return;
+
+    // seperate by lines
+    const lines = card.entry.split("\n");
+    // container for invalid value
+    const errors = [];
+
+    // Helper - validate and fallback
+    function safeInt(value, fallback, label, useStatLimit = true)
+    {
+      const parsed = parseInt(value);
+      
+      if (isNaN(parsed))
+      {
+        errors.push(`${label}: "${value}" is not a number. Kept ${fallback}.`);
+        return fallback;
+      }
+
+      // Keep things in reasonable range
+      if (useStatLimit && (parsed < CSMS_CONFIG.STAT_MIN || parsed > CSMS_CONFIG.STAT_MAX))
+      {
+        errors.push(`${label}: ${parsed} out of range (${CSMS_CONFIG.STAT_MIN}-${CSMS_CONFIG.STAT_MAX}). Kept ${fallback}.`);
+        return fallback;
+      }
+      
+      return parsed;
+    }
+
+    // Line 1 - Name: PrinceF90 | Level: 0 | XP: 0
+    const line1 = lines[0]?.match(/\w+:\s*(.+?)\s*\|\s*\w+:\s*(\S+)\s*\|\s*\w+:\s*(\S+)/i);
+    if (line1)
+    {
+      c.name = line1[1].trim() || c.name;
+      c.level = safeInt(line1[2], c.level, "Level", false);
+      c.xp = safeInt(line1[3], c.xp, "XP", false);
+    }
+
+    // Line 2 - HP: 10/10 | AC: 10 | Speed: 30ft
+    const line2 = lines[1]?.match(/\w+:\s*(\S+)\/(\S+)\s*\|\s*\w+:\s*(\S+)\s*\|\s*\w+:\s*(\S+)/i);
+    if (line2 && c.hp)
+    {
+      c.hp.current = safeInt(line2[1], c.hp.current, "HP Current", false);
+      c.hp.max = safeInt(line2[2], c.hp.max, "HP Max", false);
+      c.ac = safeInt(line2[3], c.ac, "AC", false);
+      c.speed = safeInt(line2[4], c.speed, "Speed", false);
+    }
+
+    // Line 3 - Proficiency: +2
+    const line3 = lines[2]?.match(/\w+:\s*(\S+)/i);
+    if (line3)
+    {
+      c.proficiencyBonus = safeInt(line3[1], c.proficiencyBonus, "Proficiency", false);
+    }
+
+    // Line 5 — str: 10 (+0)  dex: 10 (+0)  con: 10 (+0)
+    const line5 = lines[4]?.match(/\w+:\s*(\S+)\s*\(.*?\)\s*\w+:\s*(\S+)\s*\(.*?\)\s*\w+:\s*(\S+)/i);
+    if (line5)
+    {
+      c.stats.str = safeInt(line5[1], c.stats.str, "STR");
+      c.stats.dex = safeInt(line5[2], c.stats.dex, "DEX");
+      c.stats.con = safeInt(line5[3], c.stats.con, "CON");
+    }
+
+    // Line 6 — int: 10 (+0)  wis: 10 (+0)  cha: 10 (+0)
+    const line6 = lines[5]?.match(/\w+:\s*(\S+)\s*\(.*?\)\s*\w+:\s*(\S+)\s*\(.*?\)\s*\w+:\s*(\S+)/i);
+    if (line6)
+    {
+      c.stats.int = safeInt(line6[1], c.stats.int, "INT");
+      c.stats.wis = safeInt(line6[2], c.stats.wis, "WIS");
+      c.stats.cha = safeInt(line6[3], c.stats.cha, "CHA");
+    }
+
+    // Notify of any errors
+    if (errors.length > 0)
+    {
+      notify(
+        `Card sync errors for ${c.name}:\n- ${errors.join("\n- ")}`, 
+        `sync errors: ${errors.join(" | ")}`);
+    }
+
+    updateCharacterCard(c);
+  }
+
+  function updateCharacterCard(character)
+  {
+    const c = character;
+    if (!c) return;
+
+    const cEntry = [
+      `Name: ${c.name} | Level: ${c.level} | XP: ${c.xp}`,
+      `HP: ${c.hp.current}/${c.hp.max} | AC: ${c.ac} | Speed: ${c.speed}ft`,
+      `Proficiency: ${formatMod(c.proficiencyBonus)}`,
+      ``,
+      `STR: ${c.stats.str} (${statMod(c.stats.str)})  DEX: ${c.stats.dex} (${statMod(c.stats.dex)})  CON: ${c.stats.con} (${statMod(c.stats.con)})`,
+      `INT: ${c.stats.int} (${statMod(c.stats.int)})  WIS: ${c.stats.wis} (${statMod(c.stats.wis)})  CHA: ${c.stats.cha} (${statMod(c.stats.cha)})`,
+    ].join("\n");
+
+    const cardTitle = `📋 ${c.name}`;
+
+    const existing = storyCards.find(card => card.title === cardTitle);
+    if (existing)
+    {
+      existing.entry = cEntry;
+    }
+    else
+    {
+      storyCards.push({
+        title: cardTitle,
+        keys: `csms_cs_${c.name}, ${CSMS_CONFIG.TEMP_TRIGGER}`,
+        entry: cEntry,
+        description: ""
+      });
+    }
+  }
+
+  function removeCharacterCard(name)
+  {
+    const cardTitle = `📋 ${name}`;
+    const existing = storyCards.find(card => card.title === cardTitle);
+    if (existing)
+    {
+      storyCards.splice(storyCards.indexOf(existing), 1);
+    }
+  }
+
+  // Detect if its valid CS card
+  function isCharacterSheet(card, name)
+  {
+    const hasEmoji = card.title === `📋 ${name}`;
+    const hasKey = card.keys.indexOf(`csms_cs_${name.toLowerCase()}`) !== -1;
+    return hasEmoji || hasKey;
+  }
+
+  // Scan for card with `generation tag`
+  function getTaggedCards()
+  {
+    return storyCards.filter(card =>
+      card.title.toLowerCase().startsWith(CSMS_CONFIG.AUTO_GENERATION_TAG.toLowerCase())
+    );
+  }
+
+  // Get the name of the card with `generation tag` and remove the tag
+  function getTaggedName(card)
+  {
+    const tag = CSMS_CONFIG.AUTO_GENERATION_TAG.toLowerCase();
+    const stripped = card.title.toLowerCase().startsWith(tag)
+      ? card.title.slice(tag.length).trim()
+      : card.title.trim();
+    
+    // Strip emoji prefix if world maker included it
+    return stripped.replace(/^📋\s*/,"").trim();
+  }
+
+  // Generate CS for tagged cards
+  function processTaggedCards()
+  { 
+    const taggedCards = getTaggedCards();
+        
+    taggedCards.forEach(card =>
+    {
+      const name = getTaggedName(card);
+      if (!name) return;
+
+      // Check if name appears in recent history
+      const recentHistory = history.slice(-CSMS_CONFIG.LOOKBACK_ACTIONS);
+      const recentText = recentHistory.map(h => h.text || "").join(" ").toLowerCase();
+      if (recentText.indexOf(name.toLowerCase()) === -1) return;
+
+      // Search for a SEPARATE existing CS card
+      const existingCS = storyCards.find(c => c !== card && isCharacterSheet(c, name));
+
+      if (existingCS)
+      {
+        // Separate CS exists — sync it, remove tag from this card
+        const character = findCharacter(name);
+        if (character) parseCharacterCard(character);
+        card.title = name;
+      }
+      else if (isCharacterSheet(card, name))
+      {
+        // Tagged card IS the CS — parse it directly, remove tag
+        const character = findCharacter(name);
+        if (character)
+        {
+          parseCharacterCard(character);
+          card.title = `📋 ${name}`;  // rename properly
+        }
+      }
+      else
+      {
+        // No CS anywhere — trigger AI generation
+        if (!state.csmsPending)
+        {
+          state.csmsPending = name;
+          state.memory.frontMemory = `[Do not continue the story. Instead, based on the story card entry for "${name}", respond ONLY with this exact format and nothing else: STR:x DEX:x CON:x INT:x WIS:x CHA:x HP:x AC:x]`;
+        }
+      }
+    });
+  }
+
+  // Create CS based on AI output
+  function generateNarrativeSheet()
+  {
+    if (state.csmsPending)
+    {
+      const name = state.csmsPending;
+      
+      // Try to parse stats from AI response
+      const strMatch = text.match(/STR:\s*(\d+)/i);
+      const dexMatch = text.match(/DEX:\s*(\d+)/i);
+      const conMatch = text.match(/CON:\s*(\d+)/i);
+      const intMatch = text.match(/INT:\s*(\d+)/i);
+      const wisMatch = text.match(/WIS:\s*(\d+)/i);
+      const chaMatch = text.match(/CHA:\s*(\d+)/i);
+      const hpMatch  = text.match(/HP:\s*(\d+)/i);
+      const acMatch  = text.match(/AC:\s*(\d+)/i);
+
+      if (strMatch && dexMatch && conMatch && intMatch && wisMatch && chaMatch && hpMatch && acMatch)
+      {
+        // Create character
+        const isPlayer = state.characters.length === 0;
+        const character = initCharacter(name, isPlayer);
+        character.stats.str = parseInt(strMatch[1]);
+        character.stats.dex = parseInt(dexMatch[1]);
+        character.stats.con = parseInt(conMatch[1]);
+        character.stats.int = parseInt(intMatch[1]);
+        character.stats.wis = parseInt(wisMatch[1]);
+        character.stats.cha = parseInt(chaMatch[1]);
+        character.hp.current = parseInt(hpMatch[1]);
+        character.hp.max = parseInt(hpMatch[1]);
+        character.ac = parseInt(acMatch[1]);
+
+        state.characters.push(character);
+        updateCharacterCard(character);
+
+        // Remove tag from original card
+        const taggedCard = storyCards.find(c =>
+          c.title.toLowerCase() === `${CSMS_CONFIG.AUTO_GENERATION_TAG.toLowerCase()} ${name.toLowerCase()}`
+        );
+        if (taggedCard) taggedCard.title = name;
+
+        // Clear pending and strip stats from output
+        state.csmsPending = null;
+        text = text.replace(/STR:\s*\d+\s*DEX:\s*\d+\s*CON:\s*\d+\s*INT:\s*\d+\s*WIS:\s*\d+\s*CHA:\s*\d+\s*HP:\s*\d+\s*AC:\s*\d+/i, "").trim();
+
+        notify(
+          `Character sheet generated for ${name}!`, 
+          `generated: ${name}`);
+      }
+    }
+  }
+
+  function injectActiveCharacters()
+  {
+    const recentHistory = history.slice(-CSMS_CONFIG.LOOKBACK_ACTIONS);
+    const recentText = recentHistory.map(m => m.text || "").join(" ").toLowerCase();
+
+    const player = getPlayer();
+    const mentioned = state.characters.filter(c => 
+      c !== player && recentText.includes(c.name.toLowerCase())
+    );
+
+    const toInject = [player, ...mentioned]
+      .filter(Boolean)
+      .slice(0, CSMS_CONFIG.INJECTED_SHEET_MAX);
+
+    const injected = toInject.map(c => 
+      `[CSMS|${c.name}|HP:${c.hp.current}/${c.hp.max}|AC:${c.ac}|STR:${c.stats.str}|DEX:${c.stats.dex}|CON:${c.stats.con}|INT:${c.stats.int}|WIS:${c.stats.wis}|CHA:${c.stats.cha}]`
+    ).join("\n");
+    
+    if (injected)
+    {
+      state.memory.frontMemory = injected;
+    }
+  }
+
+  function injectStatCheck()
+  {
+    if (!state.csmsRollPending) return;
+    const { caller, action, oppose } = state.csmsRollPending;
+    if (state.csmsRollPending.oppose)
+    {
+      // VS NPC
+      text = text.trimEnd() + `\n---\n\n## Reply with exactly two lines.\nLine 1: most relevant stat for ${caller} to "${action}": STR, DEX, CON, INT, WIS, or CHA.\nLine 2: most relevant stat for ${oppose} to oppose this: STR, DEX, CON, INT, WIS, or CHA. Nothing else.\n`;
+    }
+    else
+    {
+      text = text.trimEnd() + `\n---\n\n## Reply with only one word — the most relevant stat for ${caller} to "${action}": STR, DEX, CON, INT, WIS, or CHA. Nothing else.\n`;
+    }
+  };
+
+  // ==================
+  // ORDINANCE
+  // ==================
+
+  function processOrdinanceTags()
+  {
+    // Stop immediately if there is no pending states
+    if (!state.csmsOrdinancePending) return;
+
+    const pending = state.csmsOrdinancePending;
+    const { step, caller, target, type, notation } = pending
+
+    // ---- STEP 1: Detect DAMAGING or NONDAMAGING ----
+    if (step === 1)
+    {
+      const isDamaging = /\bDAMAGING\b/i.test(text);
+      const isNonDamaging = /\bNONDAMAGING\b/i.test(text);
+
+      if (!isDamaging && !isNonDamaging)
+      {
+        // Both do not exist
+        notify(
+          `${CSMS_CONFIG.ORD_ERROR}Step 1 failed - AI failed to detect DAMAGING or NON DAMAGING.\nOrdinance "${pending.ordinanceName}" has been cancelled.`,
+          `ordinance step 1: unexpected response`
+        );
+
+        state.csmsOrdinancePending = null;
+        text = "OOC: Clear everything including your input and try again.";
+
+        return;
+      }
+
+      pending.type = isDamaging ? "DAMAGING" : "NONDAMAGING";
+      pending.step = 2;
+      // Strip everything. Step 2 instruction injects on next action
+      text = `[Ordinance "${pending.ordinanceName}" is being prepared. Press Continue to proceed.]\n`;
+
+      return;
+    }
+
+    // ---- STEP 2 DAMAGING: Get roll notation ----
+    if (step === 2 && pending.type === "DAMAGING")
+    {
+      const notationMatch = text.match(/(\d+d\d+(?:[+\-][a-zA-Z]+)?)/i);
+      // Use default notation if none provided
+      const resolvedNotation = notationMatch?. [1] || `1d${CSMS_CONFIG.DAMAGE_DIE}`;
+
+      if (!notationMatch)
+      {
+        notify(
+          `No roll notation found - using default: 1d${CSMS_CONFIG.DAMAGE_DIE}`,
+          `ordinance step 2: using default notation`
+        );
+      }
+
+      // Roll for it... 😏
+      const callerChar = findCharacter(state.csmsOrdinancePending.caller);
+      const rollResult = resolveRoll(resolvedNotation, callerChar, "normal");
+      pending.notation = resolvedNotation;
+      pending.rollResult = rollResult;
+
+      notify(
+        `${pending.caller} rolls for "${pending.ordinanceName}": ${rollResult.breakDown}`,
+        `ordinance roll: ${rollResult.breakDown}`
+      );
+
+      pending.step = 3;
+      text = `[Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.]\n\n`;
+
+      return;
+    }
+
+    // ---- STEP 3 DAMAGING: Scan narrative for damage ----
+    if (step === 3)
+    {
+      const targetChar = findCharacter(state.csmsOrdinancePending.target);
+      const callerChar = findCharacter(state.csmsOrdinancePending.caller);
+
+      if (targetChar && callerChar)
+      {
+        const dmgResult = detectNarrativeDamage(
+          text,
+          callerChar.name,
+          targetChar.name,
+          callerChar.hp.max,
+          targetChar.hp.max
+        );
+
+        if (dmgResult.target) applyDamage(targetChar, dmgResult.target.damage);
+        if (dmgResult.caller) applyDamage(callerChar, dmgResult.caller.damage);
+      }
+
+      state.csmsOrdinancePending = null;
+      
+      return;
+    }
+
+    // ---- STEP 2 NONDAMAGING: Roll or Narrative ----
+    if (step === 2 && pending.type === "NONDAMAGING")
+    {
+      const needsRoll   = /\bROLL\b/i.test(text);
+      const isNarrative = /\bNARRATIVE\b/i.test(text);
+
+      if (!needsRoll && !isNarrative)
+      {
+        notify(
+          `${CSMS_CONFIG.ORD_ERROR}Step 2 failed — AI did not return ROLL or NARRATIVE.\nOrdinance "${pending.ordinanceName}" has been cancelled.`,
+          `ordinance step 2 nondamaging: unexpected response`);
+        state.csmsOrdinancePending = null;
+        text = "OOC: Clear everything including your input and try again.";
+        return;
+      }
+
+      if (isNarrative)
+      {
+        pending.step = "3-ND";
+        text = `[Ordinance "${pending.ordinanceName}" — no roll needed. Press Continue to resolve.]\n`;
+        return;
+      }
+
+      pending.step = "2-B";
+      text = `[Ordinance "${pending.ordinanceName}" — a roll will determine the outcome. Press Continue.]\n`;
+      return;
+    }
+
+    // ---- STEP 2-B NONDAMAGING: Get roll notation ----
+    if (step === "2-B")
+    {
+      const notationMatch = text.match(/(\d+d\d+(?:[+\-][a-zA-Z]+)?)/i);
+      const resolvedNotation = notationMatch?.[1] || `${CSMS_CONFIG.ORD_DEFAULT_ROLL}`;
+
+      if (!notationMatch)
+      {
+        notify(
+          `No roll notation provided — using default: ${CSMS_CONFIG.ORD_DEFAULT_ROLL}`,
+          `ordinance step 2-B: using default notation`);
+      }
+
+      const callerChar = findCharacter(state.csmsOrdinancePending.caller);
+      const rollResult = resolveRoll(resolvedNotation, callerChar, "normal");
+      
+      pending.notation   = resolvedNotation;
+      pending.rollResult = rollResult;
+
+      notify(
+        `${pending.caller} rolls for "${pending.ordinanceName}": ${rollResult.breakDown}`,
+        `ordinance roll: ${rollResult.breakDown}`);
+
+      pending.step = "3-ND";
+      text = `\n[Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.]\n\n`;
+      return;
+    }
+
+    // ---- STEP 3-ND NONDAMAGING: Pure narrative, clear state ----
+    if (step === "3-ND")
+    {
+      state.csmsOrdinancePending = null;
+      return;
+    }
+  }
+
+  function injectOrdinanceCheck()
+  {
+    // Stop from always running
+    if (!state.csmsOrdinancePending) return;
+
+    const pending = state.csmsOrdinancePending;
+    const { step, caller, target, entry, ordinanceName } = pending;
+
+    // STEP 1
+    if (step === 1)
+    {
+      const targetHint = target ? `The target is ${target}.` : `There is no specific target.`;
+
+      text = text.trimEnd() + 
+        `\n---\n` + 
+        `Ordinance triggered by ${caller}.\n` +
+        `${targetHint}\n` + 
+        `Ordinance entry: ${entry}\n\n` + 
+        `## Reply with exactly one word: DAMAGING or NONDAMAGING. Nothing else.`;
+    }
+
+    // STEP 2 - Damaging
+    if (step === 2 && pending.type === "DAMAGING")
+    {
+      text = text.trimEnd() + 
+        `\n---\n` + 
+        `## Ordinance "${ordinanceName}" is a damaging move by ${caller} against ${target}.\n` + 
+        `What roll notation should be used? Reply with only the notation e.g. 1d20+STR. Nothing else.`;
+    }
+
+    // STEP 2 - Non damaging
+    if (step === 2 && pending.type === "NONDAMAGING")
+    {
+      text = text.trimEnd() + 
+      `\n---\n` + 
+      `## Ordinance "${ordinanceName}" triggered by ${caller}.\n` + 
+      `Does this require a roll? Reply with exactly one word: ROLL or NARRATIVE. Nothing else.`;
+    }
+
+    if (step === "2-B")
+    {
+      text = text.trimEnd() +
+        `\n---\n` +
+        `## Ordinance "${pending.ordinanceName}" requires a roll for ${pending.caller}.\n` +
+        `What roll notation should be used? Reply with only the notation e.g. 1d20+CHA. Nothing else.`;
+    }
+
+    if (step === "3-ND")
+    {
+      const rollLine = pending.rollResult
+        ? `Roll result: ${pending.rollResult.total} (${pending.rollResult.breakDown}).`
+        : "";
+
+      text = text.trimEnd() +
+        `\n---\n` +
+        `${rollLine}\n` +
+        `## Continue the story. Narrate the outcome of ${pending.caller} using "${pending.ordinanceName}"${pending.target ? ` against ${pending.target}` : ""}.`;
+    }
+  }
+
+  // ==================
+  // INVENTORY
+  // ==================
+
+  function parseInventory(character)
+  {
+    const c = character;
+    const card = storyCards.find(card => card.title === `📋 ${c.name}`);
+    if (!card)
+    {
+      notify(`No character sheet found for ${c.name}`, `inventory: no card found`);
+    
+      return;
+    }
+
+    const description = card.description || "";
+    const inventoryStart = description.indexOf("[Inventory]");
+
+    if (inventoryStart === -1)
+    {
+      notify(`No [Inventory] block found for ${c.name}`, `inventory: no block found`);
+      return;
+    }
+
+    const inventoryBlock = description.slice(inventoryStart);
+    const lines = inventoryBlock.split("\n");
+    const items = [];
+
+    // push inventory to data
+    for (const line of lines)
+    {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("notes ")) contine; // preserve, skip
+      if (trimmed.startsWith("- ")) items.push(trimmed.slice(2).trim());
+    }
+
+    c.inventory = items;
+    notify(
+    `Inventory synced for ${c.name}: ${items.length} item(s)`,
+    `inventory: synced ${items.length} items`);
+  }
+
+  // ==================
+  // COMMANDS / HANDLER
+  // ==================
+
+  function handleCreate(param)
+  {
+    const name = param || "Adventurer";
+
+    // Name is important
+    if (CSMS_CONFIG.BANNED_NAMES.indexOf(name.toLowerCase()) !== -1)
+    {
+      return `"${name}" is not a valid character name. Please choose a different name.`;
+    }
+
+    // We don't want doppleganger
+    if (findCharacter(name))
+    {
+      return `${name} already exists! Use /csms reset ${name} to start over.`;
+    }
+
+    // Decide if its player character
+    const isPlayer = state.characters.length === 0;
+    const character = initCharacter(name, isPlayer);
+    state.characters.push(character);
+    updateCharacterCard(character);
+
+    const role = isPlayer ? "player character" : "NPC";
+    return `A new character sheet has been created for the ${role}, ${name}.`;
+  }
+
+  function handleStats(param)
+  {
+    const name = param;
+    let character;
+
+    if (name)
+    {
+      character = findCharacter(name);
+      if (!character)
+      {
+        return `No character named ${name} found.`;
+      }
+    }
+    else
+    {
+      character = getActivePlayer();
+      if (!character)
+      {
+        return `No player character found. Use /csms create [name] first.`;
+      }
+    }
+
+    updateCharacterCard(character);
+    return `${character.name} checks their status.`;
+  }
+
+  // Manually sync CS to character state data by name
+  function handleSync(param)
+  {
+    const name = param;
+    let c;
+
+    if (name)
+    {
+      c = findCharacter(name);
+      if (!c)
+      {
+        return `No character named ${name} found.`;
+      }
+    } else
+    {
+      c = getActivePlayer();
+      if (!c)
+      {
+        return `No player character found.`;
+      }
+    }
+
+    parseCharacterCard(c);
+    return `${c.name}'s character sheet has been synced.`;
+  }
+
+  function handleReset(param)
+  {
+    const name = param;
+
+    if (name)
+    {
+      // Reset specific character
+      const index = state.characters.findIndex(
+        c => c.name.toLowerCase() === name.toLowerCase()
+      );
+      if (index === -1)
+      {
+        return `No character named ${name} found.`;
+      }
+
+      const storedName = state.characters[index].name;
+      state.characters.splice(index, 1);
+      removeCharacterCard(storedName);
+      return `${storedName}'s character sheet has been removed.`;
+    }
+    else
+    {
+      // Reset ALL characters
+      state.characters = [];
+      const toRemove = storyCards.filter(card => card.title.startsWith("📋"));
+
+      toRemove.forEach(card =>
+      {
+        storyCards.splice(storyCards.indexOf(card), 1);
+      });
+      return `All character sheets have been reset.`;
+    }
+  }
+
+  function handleCleanup()
+  {
+    // Find all 📋 cards that don't have matching character in state
+    const orphaned = storyCards.filter(card =>
+    {
+      if (!card.title.startsWith("📋")) return false;
+      const cardName = card.title.replace("📋 ", "");
+      return !findCharacter(cardName);
+    });
+
+    if (orphaned.length === 0)
+    {
+      return `No orphaned character sheet found.`;
+    }
+
+    orphaned.forEach(card => 
+    {
+      storyCards.splice(storyCards.indexOf(card), 1);
+    });
+
+    return `Cleaned up ${orphaned.length} orphaned character sheet(s).`;
+  }
+
+  // Dice engine
+  // Sign action as roll
+  function handleRoll(caller, action, opponent)
+  {
+    // Stop incomplete command
+    if (!caller || !action) return "Command failed to execute. Incomplete arguments. At least caller and action needed: /csms roll/caller/action/opponent";
+
+    if (!findCharacter(caller)) return `No character sheet found for "${caller}". Remember: /csms roll/CallerName/action/opponent`;
+
+    let vs = null;
+    if (opponent !== "")
+    {
+      // Could be npc or object
+      if (opponent.charAt(0) === opponent.charAt(0).toUpperCase() && opponent.charAt(0) !== opponent.charAt(0).toLowerCase())
+      {
+        // Character - then look for CS
+        if (!findCharacter(opponent)) return `No character sheet found for ${opponent}. Create with /csms create/${opponent} , then try again`;
+        
+        vs = opponent;
+      }
+    }
+    state.csmsRollPending = 
+    {
+      caller: caller,
+      action: action,
+      oppose: vs,
+    };
+    
+    return null; // Silent for now, Notification comes later
+  }
+
+  function handleOrdinance(callerName, ordinanceName, targetName)
+  {
+    if (!callerName || !ordinanceName)
+    {
+      return `${CSMS_CONFIG.ORD_ERROR}Missing arguments.\nCorrect format: /csms ordinance/CallerName/OrdinanceName/TargetName\nTarget is optional for non-combat Ordinances.`;
+    }
+
+    // Extract only ordinance cards
+    const allOrds = storyCards.filter(card => card.type === "Ordinance");
+    if (allOrds.length === 0)
+    {
+      return `${CSMS_CONFIG.ORD_ERROR}No Ordinance cards found.\nCreate a story card and set its type to "CUSTOM" => "Ordinance".`;
+    }
+
+    // Extract the exact card
+    const ordCard = allOrds.find(card => card.title.toLowerCase().trim() === ordinanceName.toLowerCase().trim());
+    if (!ordCard)
+    {
+      return `${CSMS_CONFIG.ORD_ERROR}Ordinance "${ordinanceName}" not found.\nCheck the card title matches exactly. Card type must be set to "CUSTOM" => "Ordinance".`;
+    }
+
+    // Validate caller exists
+    const callerChar = findCharacter(callerName);
+    if(!callerChar)
+    {
+      return `${CSMS_CONFIG.ORD_ERROR}Caller "${callerName}" has no character sheet.\nCreate one with /csms create/${callerName}`;
+    }
+
+    // Validate target exist - only if provided
+    const targetChar = targetName ? findCharacter(targetName) : null;
+
+    // All good - set pending state
+    state.csmsOrdinancePending = 
+    {
+      step:             1,
+      caller:           callerChar.name,
+      ordinanceName:    ordCard.title,
+      target:           targetChar ? targetChar.name : null,
+      entry:            ordCard.entry,
+      type:             null,
+      notation:         null,
+      rollResult:       null,
+    };
+    
+    return `Ordinance "${ordCard.title}" — ${callerChar.name} vs ${targetChar ? targetChar.name : "no target"}. Executing...`;
+  }
+
+  function handleUpdateInventory(name)
+  {
+    const c = name ? findCharacter(name) : getActivePlayer();
+    if (!c) return `No character named ${name} found.`;
+    parseInventory(c);
+
+    return `${c.name}'s inventory synced.`;
+  }
+
+  //--------------------------
+  //
+  //--------------------------
+
+  function parseCommand(cText)
+  {
+    const parts   = cText.split("/");
+    const commandIndentifiers = parts[1]?.trim().split(/\s+/);
+    const action  = commandIndentifiers?.[1]?.toLowerCase().replace(/[.,!?"]+$/, "") || "";
+    const args1   = parts[2]?.trim().replace(/[.,!?"]+$/, "") || "";
+    const args2   = parts[3]?.trim().replace(/[.,!?"]+$/, "") || "";
+    const args3   = parts[4]?.trim().replace(/[.,!?"]+$/, "") || "";
+
+    switch(action)
+    {
+      case "update":
+      if (args1 === "inventory")  return handleUpdateInventory(args2);
+      if (args1 === "stats")      return handleSync(args2);
+      return `Unknown update target. Use "stats" or "inventory"`;
+      case "create":      return handleCreate(args1);
+      case "check":       return handleStats(args1);
+      case "reset":       return handleReset(args1);
+      case "cleanup":     return handleCleanup();
+      case "roll":        return handleRoll(args1, args2, args3);
+      case "ordinance":   return handleOrdinance(args1,args2, args3);
+      case "test":        return handleTest();
+      default:            return `Unknown CSMS command. "/csms help" for list of available commands`;
+    }
+  }
+
+  function handleTest()
+  {
+    const char = findCharacter("Nikolai");
+    log(JSON.stringify(resolveRoll("1d20+STR", char, "normal")));
+    log(JSON.stringify(resolveRoll("2d6", char, "advantage")));
+    log(JSON.stringify(resolveRoll("1d8+3", char, "normal")));
+  }
+
+  // ==================
+  // HOOKS
+  // ==================
+
+  if (hook === "input")
+  {
+    // Zeor or one command, no more
+    const csmsMatch = text.match(/\/csms[^\n]*/i);
+
+    if (csmsMatch)
+    {
+      const result = parseCommand(csmsMatch[0].trim());
+      if (result) notify(result, result);
+    }
+  }
+
+  if (hook === "context")
+  {
+    state.characters.forEach(c =>
+    {
+      parseCharacterCard(c);
+    });
+    
+    injectActiveCharacters();
+    syncMultiplayerCharacters();
+    processTaggedCards();
+
+    if (CSMS_CONFIG.MODULES.COMBAT) injectStatCheck();
+    if (CSMS_CONFIG.MODULES.ORDINANCE) injectOrdinanceCheck();
+  }
+
+  if (hook === "output")
+  {
+    generateNarrativeSheet();
+    if (CSMS_CONFIG.MODULES.COMBAT) rollCheck();
+    if (CSMS_CONFIG.MODULES.ORDINANCE) processOrdinanceTags();
+    updateNotification();
+
+    text = text || " ";
+  }
+
+}
