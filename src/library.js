@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.5.2 by PrinceF90
+// v1.6.0 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -32,12 +32,63 @@ const CSMS_CONFIG =
 
   /* COMBAT (only when combat mechanis is true) */
   DAMAGE_DIE: 6,    // low fantasy = d4, high combat = d8
+
+  /* ORDINANCE */
+  ORD_ERROR: "⚠ ORDINANCE ERROR\n",    // Header for Ordinance error message
+  ORD_PROXIMITY: 50,                    // Word window for narraive damage detection
+  ORD_DEFAULT_ROLL: "1d20",             // fallback when AI doesn't provide notation
   
   /*  TEXT CUSTOMIZATION */
   AUTO_GENERATION_TAG: "[CSMS]",    // System will generate Charater Sheet for cards with this tag
   TEMP_TRIGGER: "github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem",
   BANNED_NAMES: ["you", "adventurer"],
 }
+
+const NOTIFY_CONFIG = 
+{
+  NOTIFICATION_HEADER: "!NOTIFICATION!",   // Header message
+  DEBUG_MODE: true,   // For developer only
+}
+
+// ============================================
+// ORDINANCE DAMAGE TIERS
+// Word lists for narrative damage detection
+// Highest matching tier wins
+// ============================================
+
+const CSMS_ORD_TIERS =
+{
+  glancing:  
+  {
+    range: [0.02, 0.06], words: 
+    ["graze", "brush", "glance", "clip", "nick", "scratch", "tap", "flick", "skim"] 
+  },
+  solid:     
+  {
+    range: [0.06, 0.14], words: 
+    ["hit", "strike", "cut", "slash", "jab", "smack", "thud", "crack", "connect", "land"] 
+  },
+  heavy:     
+  {
+    range: [0.14, 0.22], words: 
+    ["slam", "drive", "pierce", "gouge", "pound", "crash", "pummel", "hammer", "thrust"]
+  },
+  fierce:    
+  {
+    range: [0.22, 0.35], words: 
+    ["maul", "rend", "tear", "cleave", "devastate", "batter", "wrench", "savage", "shatter"]
+  },
+  brutal:    
+  {
+    range: [0.35, 0.50], words: 
+    ["obliterate", "annihilate", "pulverize", "rupture", "eviscerate", "decimate", "destroy"]
+  },
+  lethal:    
+  {
+    range: [0.60, 0.75], words: 
+    ["sever", "impale", "disembowel", "split", "incinerate", "disintegrate", "liquefy"]
+  },
+};
 
 // ============================================
 // NotifyThem - An AID dynamic notification and logging system made by programmer for programmer
@@ -50,12 +101,6 @@ const CSMS_CONFIG =
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
-
-const NOTIFY_CONFIG = 
-{
-  NOTIFICATION_HEADER: "!NOTIFICATION!",   // Header message
-  DEBUG_MODE: true,   // For developer only
-}
 
 function initNotify ()
 {
@@ -407,6 +452,85 @@ function CSMS(hook)
     const breakDown = `1d${CSMS_CONFIG.DAMAGE_DIE}+${bonus} = [${die}] + ${bonus} = ${total}`;
 
     return {total: total, breakDown: breakDown};
+  }
+
+  // Generate damage from narrative
+  function detectNarrativeDamage(output, callerName, targetName, callerMaxHp, targetMaxHp)
+  {
+    const words         = output.toLowerCase().split(/\s+/);
+    const callerLow     = callerName.toLowerCase();
+    const targetLow     = targetName.toLowerCase();
+    const callerPronouns = ["you", "your", "i ", "i'm", "i've", "my", "me"];
+
+    const result = { caller: null, target: null };
+
+    // ---- EXPLICIT NUMBER DETECTION ----
+    const explicitMatch = output.match(/(\d+)\s*(?:damage|dmg|hp|points?)\b/i)
+                      || output.match(/dealt?\s+(\d+)/i)
+                      || output.match(/loses?\s+(\d+)/i);
+
+    if (explicitMatch)
+    {
+      const dmg      = parseInt(explicitMatch[1]);
+      const matchIdx = output.toLowerCase().indexOf(explicitMatch[0].toLowerCase());
+      const before   = output.toLowerCase().slice(Math.max(0, matchIdx - 60), matchIdx);
+
+      const isTargetHit = before.includes(targetLow);
+      const isCallerHit = before.includes(callerLow)
+                      || callerPronouns.some(p => before.includes(p));
+
+      if (isTargetHit)
+      {
+        result.target = { tier: "explicit", damage: dmg };
+      }
+      else if (isCallerHit)
+      {
+        result.caller = { tier: "explicit", damage: dmg };
+      }
+
+      return result;
+    }
+
+    // ---- TIER WORD DETECTION ----
+    const tierOrder = ["lethal", "brutal", "fierce", "heavy", "solid", "glancing"];
+
+    for (const tierName of tierOrder)
+    {
+      const tier = CSMS_ORD_TIERS[tierName];
+
+      for (const word of tier.words)
+      {
+        const wordIdx = output.toLowerCase().search(new RegExp(`\\b${word}\\b`));
+        if (wordIdx === -1) continue;
+
+        // Who appears in the 60 characters AFTER the damage word?
+        const after = output.toLowerCase().slice(wordIdx, wordIdx + 60);
+
+        const isTargetHit = after.includes(targetLow);
+        const isCallerHit = after.includes(callerLow)
+                        || callerPronouns.some(p => after.includes(p));
+
+        if (isTargetHit && !result.target)
+        {
+          const [min, max] = tier.range;
+          const dmg = Math.max(1, Math.round(targetMaxHp * (min + Math.random() * (max - min))));
+          result.target = { tier: tierName, damage: dmg };
+        }
+        else if (isCallerHit && !result.caller)
+        {
+          const [min, max] = tier.range;
+          const dmg = Math.max(1, Math.round(callerMaxHp * (min + Math.random() * (max - min))));
+          result.caller = { tier: tierName, damage: dmg };
+        }
+
+        // Both found — no need to keep scanning
+        if (result.caller && result.target) break;
+      }
+      
+      if (result.caller && result.target) break;
+    }
+
+    return result;
   }
 
   // ==================
@@ -802,100 +926,219 @@ function CSMS(hook)
 
   function processOrdinanceTags()
   {
+    // Stop immediately if there is no pending states
     if (!state.csmsOrdinancePending) return;
 
-    // DEBUG
-    log(`ordinance raw output: ${text}`);
+    const pending = state.csmsOrdinancePending;
+    const { step, caller, target, type, notation } = pending
 
-    // Step 1 — Find dice pattern anywhere in text (XdY or XdY+Z or XdY+STAT)
-    const diceMatch = text.match(/\b(\d+d\d+(?:[+-][a-zA-Z]+)?)\b/i);
-    const notation = diceMatch?.[1];
-
-    // Tier 1 — no dice at all
-    if (!notation)
+    // ---- STEP 1: Detect DAMAGING or NONDAMAGING ----
+    if (step === 1)
     {
-      notify(
-        "No dice provided — ordinance executed as narrative",
-        "ordinance: no dice pattern found");
-      state.csmsOrdinancePending = null;
+      const isDamaging = /\bDAMAGING\b/i.test(text);
+      const isNonDamaging = /\bNONDAMAGING\b/i.test(text);
+
+      if (!isDamaging && !isNonDamaging)
+      {
+        // Both do not exist
+        notify(
+          `${CSMS_CONFIG.ORD_ERROR}Step 1 failed - AI failed to detect DAMAGING or NON DAMAGING.\nOrdinance "${pending.ordinanceName}" has been cancelled.`,
+          `ordinance step 1: unexpected response`
+        );
+
+        state.csmsOrdinancePending = null;
+        text = "OOC: Clear everything including your input and try again.";
+
+        return;
+      }
+
+      pending.type = isDamaging ? "DAMAGING" : "NONDAMAGING";
+      pending.step = 2;
+      // Strip everything. Step 2 instruction injects on next action
+      text = `[Ordinance "${pending.ordinanceName}" is being prepared. Press Continue to proceed.]\n`;
+
       return;
     }
 
-    // Resolve the roll
-    const result = resolveRoll(notation, null, "normal");
-    notify(
-      `Ordinance roll: ${result.breakDown}`,
-      `ordinance roll: ${result.breakDown}`);
-
-    const continueText = `## Continue the story incorporating the ordinance result. Roll result: ${result.total}.`
-
-    // Step 2 — Find damage: number near "damage" or "dmg"
-    const damageMatch = text.match(/\b(\d+)\s+(?:damage|dmg)\b(?!\s+(?:was|is|has|had|been|from|to\s+(?:you|him|her|them|it)))/i);
-    const damage = damageMatch?.[1] ?? damageMatch?.[2];
-
-    // Tier 2 — no damage
-    if (!damage)
+    // ---- STEP 2 DAMAGING: Get roll notation ----
+    if (step === 2 && pending.type === "DAMAGING")
     {
+      const notationMatch = text.match(/(\d+d\d+(?:[+\-][a-zA-Z]+)?)/i);
+      // Use default notation if none provided
+      const resolvedNotation = notationMatch?. [1] || `1d${CSMS_CONFIG.DAMAGE_DIE}`;
+
+      if (!notationMatch)
+      {
+        notify(
+          `No roll notation found - using default: 1d${CSMS_CONFIG.DAMAGE_DIE}`,
+          `ordinance step 2: using default notation`
+        );
+      }
+
+      // Roll for it... 😏
+      const callerChar = findCharacter(state.csmsOrdinancePending.caller);
+      const rollResult = resolveRoll(resolvedNotation, callerChar, "normal");
+      pending.notation = resolvedNotation;
+      pending.rollResult = rollResult;
+
       notify(
-        "No damage specified — roll resolved, no HP change",
-        "ordinance: no damage tag found");
-      text = continueText;
-      
+        `${pending.caller} rolls for "${pending.ordinanceName}": ${rollResult.breakDown}`,
+        `ordinance roll: ${rollResult.breakDown}`
+      );
+
+      pending.step = 3;
+      text = `[Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.]\n\n`;
+
+      return;
+    }
+
+    // ---- STEP 3 DAMAGING: Scan narrative for damage ----
+    if (step === 3)
+    {
+      const targetChar = findCharacter(state.csmsOrdinancePending.target);
+      const callerChar = findCharacter(state.csmsOrdinancePending.caller);
+
+      if (targetChar && callerChar)
+      {
+        const dmgResult = detectNarrativeDamage(
+          text,
+          callerChar.name,
+          targetChar.name,
+          callerChar.hp.max,
+          targetChar.hp.max
+        );
+
+        if (dmgResult.target) applyDamage(targetChar, dmgResult.target.damage);
+        if (dmgResult.caller) applyDamage(callerChar, dmgResult.caller.damage);
+      }
+
       state.csmsOrdinancePending = null;
       
       return;
     }
 
-    // Step 3 — Find target: pending target hint first, then "against [Name]" / "to [Name]"
-    const pendingTarget = state.csmsOrdinancePending?.target || null;
-    const narrativeMatch = text.match(/(?:against|to)\s+([A-Z][a-z]+)/);
-    const character = pendingTarget || narrativeMatch?.[1] || null;
-
-    // Tier 3 — no target
-    if (!character)
+    // ---- STEP 2 NONDAMAGING: Roll or Narrative ----
+    if (step === 2 && pending.type === "NONDAMAGING")
     {
-      notify(
-        "No target found — damage not applied",
-        "ordinance: no target found");
-      text = continueText;
-      
-      state.csmsOrdinancePending = null;
-      
+      const needsRoll   = /\bROLL\b/i.test(text);
+      const isNarrative = /\bNARRATIVE\b/i.test(text);
+
+      if (!needsRoll && !isNarrative)
+      {
+        notify(
+          `${CSMS_CONFIG.ORD_ERROR}Step 2 failed — AI did not return ROLL or NARRATIVE.\nOrdinance "${pending.ordinanceName}" has been cancelled.`,
+          `ordinance step 2 nondamaging: unexpected response`);
+        state.csmsOrdinancePending = null;
+        text = "OOC: Clear everything including your input and try again.";
+        return;
+      }
+
+      if (isNarrative)
+      {
+        pending.step = "3-ND";
+        text = `[Ordinance "${pending.ordinanceName}" — no roll needed. Press Continue to resolve.]\n`;
+        return;
+      }
+
+      pending.step = "2-B";
+      text = `[Ordinance "${pending.ordinanceName}" — a roll will determine the outcome. Press Continue.]\n`;
       return;
     }
 
-    // All present — apply damage
-    const cCharacter = findCharacter(character);
-    if (!cCharacter)
+    // ---- STEP 2-B NONDAMAGING: Get roll notation ----
+    if (step === "2-B")
     {
+      const notationMatch = text.match(/(\d+d\d+(?:[+\-][a-zA-Z]+)?)/i);
+      const resolvedNotation = notationMatch?.[1] || `${CSMS_CONFIG.ORD_DEFAULT_ROLL}`;
+
+      if (!notationMatch)
+      {
+        notify(
+          `No roll notation provided — using default: ${CSMS_CONFIG.ORD_DEFAULT_ROLL}`,
+          `ordinance step 2-B: using default notation`);
+      }
+
+      const callerChar = findCharacter(state.csmsOrdinancePending.caller);
+      const rollResult = resolveRoll(resolvedNotation, callerChar, "normal");
+      
+      pending.notation   = resolvedNotation;
+      pending.rollResult = rollResult;
+
       notify(
-        `No character sheet found for "${character}" — damage not applied`,
-        "ordinance: character not in state");
-      text = continueText;
-      
-      state.csmsOrdinancePending = null;
-      
+        `${pending.caller} rolls for "${pending.ordinanceName}": ${rollResult.breakDown}`,
+        `ordinance roll: ${rollResult.breakDown}`);
+
+      pending.step = "3-ND";
+      text = `\n[Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.]\n\n`;
       return;
     }
 
-    const hp = applyDamage(cCharacter, parseInt(damage));
-    notify(
-      `${character} took ${damage} damage. Remaining HP: ${hp}`,
-      `ordinance: damage applied`);
-    
-    text = continueText;
-
-    state.csmsOrdinancePending = null;
+    // ---- STEP 3-ND NONDAMAGING: Pure narrative, clear state ----
+    if (step === "3-ND")
+    {
+      state.csmsOrdinancePending = null;
+      return;
+    }
   }
 
   function injectOrdinanceCheck()
   {
+    // Stop from always running
     if (!state.csmsOrdinancePending) return;
 
-    const { entry, target } = state.csmsOrdinancePending;
-    const targetHint = target ? `\nThe target of this ordinance is: ${target}.` : "";
+    const pending = state.csmsOrdinancePending;
+    const { step, caller, target, entry, ordinanceName } = pending;
 
-    text = text.trimEnd() + `\n---\n\n{entry: ${entry}}${targetHint}\n\n## Reply with exactly one or more lines.\nLine 1: ROLL: XdY+Z.\nLine 2: DAMAGE: Integer of damage dealt.\nLine 3: CHARACTER: Name character user use ordinance against. Nothing else.\n`;
+    // STEP 1
+    if (step === 1)
+    {
+      const targetHint = target ? `The target is ${target}.` : `There is no specific target.`;
+
+      text = text.trimEnd() + 
+        `\n---\n` + 
+        `Ordinance triggered by ${caller}.\n` +
+        `${targetHint}\n` + 
+        `Ordinance entry: ${entry}\n\n` + 
+        `## Reply with exactly one word: DAMAGING or NONDAMAGING. Nothing else.`;
+    }
+
+    // STEP 2 - Damaging
+    if (step === 2 && pending.type === "DAMAGING")
+    {
+      text = text.trimEnd() + 
+        `\n---\n` + 
+        `## Ordinance "${ordinanceName}" is a damaging move by ${caller} against ${target}.\n` + 
+        `What roll notation should be used? Reply with only the notation e.g. 1d20+STR. Nothing else.`;
+    }
+
+    // STEP 2 - Non damaging
+    if (step === 2 && pending.type === "NONDAMAGING")
+    {
+      text = text.trimEnd() + 
+      `\n---\n` + 
+      `## Ordinance "${ordinanceName}" triggered by ${caller}.\n` + 
+      `Does this require a roll? Reply with exactly one word: ROLL or NARRATIVE. Nothing else.`;
+    }
+
+    if (step === "2-B")
+    {
+      text = text.trimEnd() +
+        `\n---\n` +
+        `## Ordinance "${pending.ordinanceName}" requires a roll for ${pending.caller}.\n` +
+        `What roll notation should be used? Reply with only the notation e.g. 1d20+CHA. Nothing else.`;
+    }
+
+    if (step === "3-ND")
+    {
+      const rollLine = pending.rollResult
+        ? `Roll result: ${pending.rollResult.total} (${pending.rollResult.breakDown}).`
+        : "";
+
+      text = text.trimEnd() +
+        `\n---\n` +
+        `${rollLine}\n` +
+        `## Continue the story. Narrate the outcome of ${pending.caller} using "${pending.ordinanceName}"${pending.target ? ` against ${pending.target}` : ""}.`;
+    }
   }
 
   // ==================
@@ -941,7 +1184,7 @@ function CSMS(hook)
   }
 
   // ==================
-  // COMMANDS
+  // COMMANDS / HANDLER
   // ==================
 
   function handleCreate(param)
@@ -1110,27 +1353,51 @@ function CSMS(hook)
     return null; // Silent for now, Notification comes later
   }
 
-  function handleOrdinance(ordinanceName, targetName)
+  function handleOrdinance(callerName, ordinanceName, targetName)
   {
-    // We dont want to shuffle through every cards that exist
-    const allOrds = storyCards.filter(card => card.type === "Ordinance");
-    if (allOrds.length === 0) return "No Ordinance found. Please create one by creating a new story card and set the type to CUSTOM and Ordinance for the custom type";
-    
-    // Find match
-    const ordCard = allOrds.find(card => card.title.toLowerCase() === ordinanceName.toLowerCase());
-    if (!ordCard) return `Ordinance ${ordinanceName} not found. Please create one by creating a new story card and set the type to CUSTOM and Ordinance for the custom type`;
-
-    // Get the entry
-    const ordinanceEntry = ordCard.entry;
-    
-    state.csmsOrdinancePending = 
+    if (!callerName || !ordinanceName)
     {
-      name: ordinanceName,
-      entry: ordinanceEntry,
-      target: targetName || null,
+      return `${CSMS_CONFIG.ORD_ERROR}Missing arguments.\nCorrect format: /csms ordinance/CallerName/OrdinanceName/TargetName\nTarget is optional for non-combat Ordinances.`;
     }
 
-    return `Ordinance "${ordinanceName}" executed.`;
+    // Extract only ordinance cards
+    const allOrds = storyCards.filter(card => card.type === "Ordinance");
+    if (allOrds.length === 0)
+    {
+      return `${CSMS_CONFIG.ORD_ERROR}No Ordinance cards found.\nCreate a story card and set its type to "CUSTOM" => "Ordinance".`;
+    }
+
+    // Extract the exact card
+    const ordCard = allOrds.find(card => card.title.toLowerCase().trim() === ordinanceName.toLowerCase().trim());
+    if (!ordCard)
+    {
+      return `${CSMS_CONFIG.ORD_ERROR}Ordinance "${ordinanceName}" not found.\nCheck the card title matches exactly. Card type must be set to "CUSTOM" => "Ordinance".`;
+    }
+
+    // Validate caller exists
+    const callerChar = findCharacter(callerName);
+    if(!callerChar)
+    {
+      return `${CSMS_CONFIG.ORD_ERROR}Caller "${callerName}" has no character sheet.\nCreate one with /csms create/${callerName}`;
+    }
+
+    // Validate target exist - only if provided
+    const targetChar = targetName ? findCharacter(targetName) : null;
+
+    // All good - set pending state
+    state.csmsOrdinancePending = 
+    {
+      step:             1,
+      caller:           callerChar.name,
+      ordinanceName:    ordCard.title,
+      target:           targetChar ? targetChar.name : null,
+      entry:            ordCard.entry,
+      type:             null,
+      notation:         null,
+      rollResult:       null,
+    };
+    
+    return `Ordinance "${ordCard.title}" — ${callerChar.name} vs ${targetChar ? targetChar.name : "no target"}. Executing...`;
   }
 
   function handleUpdateInventory(name)
@@ -1162,10 +1429,11 @@ function CSMS(hook)
       if (args1 === "stats")      return handleSync(args2);
       return `Unknown update target. Use "stats" or "inventory"`;
       case "create":      return handleCreate(args1);
+      case "check":       return handleStats(args1);
       case "reset":       return handleReset(args1);
       case "cleanup":     return handleCleanup();
       case "roll":        return handleRoll(args1, args2, args3);
-      case "ordinance":   return handleOrdinance(args1,args2);
+      case "ordinance":   return handleOrdinance(args1,args2, args3);
       case "test":        return handleTest();
       default:            return `Unknown CSMS command. "/csms help" for list of available commands`;
     }
@@ -1187,7 +1455,6 @@ function CSMS(hook)
   {
     // Zeor or one command, no more
     const csmsMatch = text.match(/\/csms[^\n]*/i);
-    log(`csmsMatch: ${csmsMatch}`);
 
     if (csmsMatch)
     {
