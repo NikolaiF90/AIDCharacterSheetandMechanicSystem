@@ -36,7 +36,7 @@
   <div class="content-body">
 
     <div class="tip-box">
-      <strong>How to use commands:</strong> Type any command directly into the adventure input field, the same way you'd type an action or dialogue. CSMS detects the command automatically — you don't need to be on any special screen.
+      <strong>How to use commands:</strong> Type any command directly into the adventure input field, the same way you'd type an action or dialogue. CSMS detects the command automatically — you don't need to be on any special screen. Commands can even be combined with normal text in the same input.
     </div>
 
     <h2>Character Management</h2>
@@ -47,46 +47,20 @@
         <th>Description</th>
       </tr>
       <tr>
-        <td>/csms create [name]</td>
-        <td>Creates a new character sheet. The first character created is marked as the player character. All subsequent characters are NPCs. Replace <code>[name]</code> with the character's name.</td>
+        <td>/csms create/[name]</td>
+        <td>Creates a new character sheet. The first character created is marked as the player character. All subsequent characters are NPCs.</td>
       </tr>
       <tr>
         <td>/csms stats</td>
-        <td>Refreshes and displays your character sheet (player character). Use this if your sheet seems out of date or not showing correctly.</td>
+        <td>Refreshes and displays your character sheet. Use this if your sheet seems out of date or not showing correctly.</td>
       </tr>
       <tr>
-        <td>/csms stats [name]</td>
+        <td>/csms stats/[name]</td>
         <td>Refreshes a specific character's sheet by name. Useful for checking NPC sheets.</td>
       </tr>
-    </table>
-
-    <h2>Syncing</h2>
-
-    <table class="cmd-table">
       <tr>
-        <th>Command</th>
-        <th>Description</th>
-      </tr>
-      <tr>
-        <td>/csms sync</td>
-        <td>Forces an immediate sync of your story card edits to state. Normally this happens automatically on the next action — use this if you want it to update right now.</td>
-      </tr>
-      <tr>
-        <td>/csms sync [name]</td>
-        <td>Forces immediate sync for a specific character's card.</td>
-      </tr>
-    </table>
-
-    <h2>Resetting</h2>
-
-    <table class="cmd-table">
-      <tr>
-        <th>Command</th>
-        <th>Description</th>
-      </tr>
-      <tr>
-        <td>/csms reset [name]</td>
-        <td>Removes a specific character's sheet entirely — both the story card and the state data. The character's name is case-insensitive.</td>
+        <td>/csms reset/[name]</td>
+        <td>Removes a specific character's sheet entirely — both the story card and the state data. Case-insensitive.</td>
       </tr>
       <tr>
         <td>/csms reset</td>
@@ -98,24 +72,71 @@
       </tr>
     </table>
 
+    <h2>Update</h2>
+
+    <table class="cmd-table">
+      <tr>
+        <th>Command</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>/csms update/stats/[name]</td>
+        <td>Reads the Entry field of a character's story card and syncs their stats to state. Run this after manually editing stats on the card.</td>
+      </tr>
+      <tr>
+        <td>/csms update/inventory/[name]</td>
+        <td>Reads the Notes field of a character's story card and syncs their inventory to state. Run this after editing the <code>[Inventory]</code> block in the card.</td>
+      </tr>
+    </table>
+
+    <h2>Dice & Rolls</h2>
+
+    <table class="cmd-table">
+      <tr>
+        <th>Command</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>/csms roll/[action]</td>
+        <td>Initiates a roll for an action. CSMS asks the AI which stat is most relevant, then rolls <code>1d20 + stat modifier</code>. The result feeds back into the next AI response. Replace <code>[action]</code> with what you're attempting — e.g. <code>/csms roll/pick the lock</code>.</td>
+      </tr>
+    </table>
+
+    <h2>Ordinance</h2>
+
+    <table class="cmd-table">
+      <tr>
+        <th>Command</th>
+        <th>Description</th>
+      </tr>
+      <tr>
+        <td>/csms ordinance/[name]/[target]</td>
+        <td>Triggers an Ordinance against a target. CSMS finds the Ordinance story card by name, feeds its entry to the AI, and executes the outcome mechanically — including rolls and damage if the Ordinance warrants it. Replace <code>[name]</code> with the Ordinance card title and <code>[target]</code> with the target character's name.</td>
+      </tr>
+    </table>
+
+    <div class="tip-box" style="margin-top: 1.5rem;">
+      <strong>Ordinance example:</strong> If you have an Ordinance card titled <em>Quick Strike</em> and want to use it against a Guard — type <code>/csms ordinance/Quick Strike/Guard</code>. CSMS handles the rest.
+    </div>
+
     <h2>Notes</h2>
 
     <h3>Commands work anywhere in your input</h3>
-    <p>You can type a command as part of regular text and it will still be detected. For example:</p>
-    <pre><code>> You check your status. /csms stats</code></pre>
-    <p>Both the action and the command will work. The AI sees your action; CSMS intercepts the command.</p>
+    <p>You can type a command alongside regular text and both will work. For example:</p>
+    <pre><code>> You size up the guard and make your move. /csms ordinance/Quick Strike/Guard</code></pre>
+    <p>The AI sees your action. CSMS intercepts the command.</p>
 
     <h3>Names are case-insensitive</h3>
-    <p><code>/csms reset nikolai</code> and <code>/csms reset Nikolai</code> and <code>/csms reset NIKOLAI</code> all do the same thing.</p>
+    <p><code>/csms reset/nikolai</code> and <code>/csms reset/Nikolai</code> both do the same thing.</p>
 
     <h3>Punctuation is stripped from names</h3>
-    <p>If your input contains punctuation near the name (like quotation marks), CSMS strips it automatically. <code>/csms create "Diana"</code> creates a character named <code>Diana</code>, not <code>"Diana"</code>.</p>
+    <p>CSMS strips punctuation from name parameters automatically. <code>/csms create/"Diana"</code> creates a character named <code>Diana</code>.</p>
 
     <h3>Multiplayer behavior</h3>
     <p>In multiplayer with Third Person mode:</p>
     <ul>
-      <li><code>/csms stats</code> with no name shows <em>your</em> character, not necessarily the first character created</li>
-      <li><code>/csms sync</code> with no name syncs <em>your</em> character</li>
+      <li><code>/csms stats</code> with no name shows <em>your</em> character</li>
+      <li><code>/csms roll</code> always rolls for the active player</li>
       <li>Any player can create or reset any character — there are no ownership restrictions</li>
     </ul>
 
