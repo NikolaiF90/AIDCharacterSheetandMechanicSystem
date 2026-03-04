@@ -76,13 +76,14 @@ INT: 10 (+0)  WIS: 10 (+0)  CHA: 10 (+0)</code></pre>
 - burner phone
 - $200 cash
 - pocket knife
-- notes "found near the docks"</code></pre>
+- note "Meet at X at noon"
+- crumpled paper "The bigger is coming"</code></pre>
 
-    <p>Edit it freely — add items, remove them, annotate with <code>notes "..."</code>. When you're done, sync it:</p>
+    <p>Edit it freely — add items, remove them. Items with text on them use quoted format: <code>- note "Meet at X at noon"</code>. These are actual items, not annotations — the quoted text is part of the item name. When you're done, sync it:</p>
     <pre><code>/csms update/inventory/YourName</code></pre>
 
     <div class="tip-box">
-      <strong>Format rules:</strong> Each item gets its own <code>- item</code> line. Duplicate items are separate lines — no stacking. The <code>notes "..."</code> annotation is optional and preserved as-is.
+      <strong>Format rules:</strong> Each item gets its own <code>- item</code> line. Duplicate items are separate lines — no stacking. Items like notes or papers with text use quoted format: <code>- note "text here"</code>.
     </div>
 
     <h2>Rolling Dice</h2>
@@ -102,10 +103,10 @@ INT: 10 (+0)  WIS: 10 (+0)  CHA: 10 (+0)</code></pre>
 
     <h2>Ordinances</h2>
     <p>Ordinances are special behaviors written by the world maker that change how the world responds. Trigger one with:</p>
-    <pre><code>/csms ordinance/OrdinanceName/TargetName</code></pre>
+    <pre><code>/csms ordinance/CallerName/OrdinanceName/TargetName</code></pre>
 
     <p>For example — an Ordinance called <em>Quick Strike</em> against a Guard:</p>
-    <pre><code>/csms ordinance/Quick Strike/Guard</code></pre>
+    <pre><code>/csms ordinance/Nikolai/Quick Strike/Borris</code></pre>
 
     <p>CSMS handles the rest — determining if a roll is needed, rolling it, applying damage if the move lands, and letting the AI narrate based on what actually happened.</p>
 
@@ -143,7 +144,7 @@ You initiated a roll: pick the lock
       <tr><td>/csms update/stats/[name]</td><td>Sync card stat edits to state</td></tr>
       <tr><td>/csms update/inventory/[name]</td><td>Sync inventory edits to state</td></tr>
       <tr><td>/csms roll/[action]</td><td>Roll dice for an action</td></tr>
-      <tr><td>/csms ordinance/[name]/[target]</td><td>Trigger an Ordinance against a target</td></tr>
+      <tr><td>/csms ordinance/[caller]/[name]/[target]</td><td>Trigger an Ordinance against a target</td></tr>
       <tr><td>/csms reset/[name]</td><td>Remove a specific character sheet</td></tr>
       <tr><td>/csms reset</td><td>Remove all character sheets</td></tr>
       <tr><td>/csms cleanup</td><td>Remove orphaned story cards</td></tr>
