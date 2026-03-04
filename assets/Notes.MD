@@ -46,7 +46,7 @@
   entry: "card content here",
   type: "class",                // "class" = default, or custom string e.g "1- Species"
   title: "Card Title",
-  description: "Notes field — shown to player during character creation"
+  description: "Notes field — shown to player during character creation",
   useForCharacterCreation: false  // true = card appears as selectable option in character creator scenarios
 }
 ```
@@ -62,7 +62,7 @@
 ### Multiplayer Findings (tested Feb 2026)
 - `info.characters` returns **array of strings**, NOT array of objects
   - Documentation says `[{ name: "Sam" }]` — THIS IS WRONG
-  - Actual format: `["Nikolai", "Datwangye"]`
+  - Actual format: `["PlayerOne", "PlayerTwo"]`
 - `info.characters` can contain empty strings — always guard with `!charName || charName.trim() === ""`
 - All players default to name "You" on join — must change manually
 - Third Person plot component switches input format from `> You` to `> Name`
@@ -82,7 +82,7 @@ Tested multiple methods for getting AI to produce structured output mid-story:
 | Story card entry (keyword match) | ✅ Works | AI treats as established world fact — highest priority |
 | Context hook `##` instruction at end of text | ✅ Works | AI reads as direct instruction before generating |
 
-**Key insight:** `##` injected at the END of context works because AI reads sequentially — it sees the instruction right before it generates. This is the reliable method for structured output requests.
+**Key insight:** For roll stat detection, `##` injected at the END of context (after all story text) works because AI reads sequentially — it sees the instruction right before it generates. For tag system stat detection, same principle applies via frontMemory positioned correctly.
 
 ### Known Bugs / Limitations
 - `stop: true` in input modifier also suppresses player action from displaying
@@ -119,7 +119,7 @@ Reading values by position instead of label means player can rename any label wi
 Without it, `syncMultiplayerCharacters()` would delete NPC sheets when they're not in `info.characters`. Flag ensures only actual multiplayer player sheets get synced against the player list.
 
 ### Why compact injection format for frontMemory
-Full character sheets in frontMemory would consume too much context. One-line format `[CSMS|Name|HP:x/y|AC:z|...]` gives AI all mechanical data it needs in minimum tokens.
+Full character sheets in frontMemory would consume too much context. One-line format `[CSMS|Name|HP:x/y|AC:z|...]` gives AI all mechanical data it needs in minimum tokens. 20 characters × ~60 chars = ~1200 chars — very manageable.
 
 ### Why keyword system was deprioritized
 AID's native keyword system is unreliable for cross-script compatibility. Direct `frontMemory` injection gives us full control over what the AI sees and when. No keyword conflicts possible.
@@ -128,22 +128,13 @@ AID's native keyword system is unreliable for cross-script compatibility. Direct
 AI generation happens one at a time — we hijack the entire output for stat generation. Processing multiple simultaneously would cause chaos. One per action is intentional. Multiple tagged cards process sequentially over consecutive actions.
 
 ### Why player agency instead of automatic roll detection
-Attempted to have AI automatically signal rolls via tags. Failed — AI ignored all instruction injection methods tested. Player saying `/csms roll` is explicit and reliable. Aligns with TTRPG philosophy: player declares intent to roll, AI determines what stat, script produces the number.
+Attempted to have AI automatically signal rolls via `[ROLL:XdY+STAT]` tags. Failed — AI ignored all instruction injection methods tested (frontMemory, text manipulation). Player saying `/csms roll` is explicit and reliable. Aligns with TTRPG philosophy: player declares intent to roll, AI determines what stat, script produces the number.
 
 ### Why `##` format for roll instructions
-`##` signals to the AI that this is a direct instruction, not story content. Injected at end of context so AI reads it immediately before generating.
+`##` signals to the AI that this is a direct instruction (not story content). Injected at end of context so AI reads it immediately before generating. Two-action flow: action 1 gets the stat, action 2 gets the narrative informed by the result.
 
 ### Why NotifyThem is separate from CSMS
 Independent reusability — other scripters can use NotifyThem without CSMS. Publishable as standalone system. Clean separation of concerns.
-
-### Why inventory lives in CS notes field, not a separate card
-No character limit unlike Entry (2000 char ceiling). Keeps inventory naturally paired with character stats. No extra cards cluttering world info. Multiplayer compatible by default — each character already has their own CS card. Player editable without script intervention.
-
-### Why inventory uses dash list format
-Dash-separated items are read by AI as distinct entries more reliably than newline alone. AID players are already comfortable with bullet list formatting. Script parses cleanly — each `- item` line is one array element.
-
-### Why duplicate items are separate lines, not `x3` notation
-Simpler parsing. No quantity tracking complexity for MVP. Equivalent to a standard JS array with duplicate entries. Player has full manual control over each instance. Can be revisited in a later phase.
 
 ---
 
@@ -154,9 +145,9 @@ Player input (any format)
     ↓
 Input hook — regex scan for /csms anywhere in text
     ↓
-parseCommand() — split on "/" → action, args1, args2, args3
+parseCommand() — extract action and param
     ↓
-handle[Action](args1, args2, args3) — execute, return result string
+handle[Action]() — execute, return result string
     ↓
 notify(result) — store in state.notifyMessages
     ↓
@@ -172,76 +163,33 @@ Output hook — generateNarrativeSheet() + rollCheck() + updateNotification()
 Player sees: [CSMS notification] + AI narrative (or ## instruction if roll pending)
 ```
 
-### Command Syntax (v1.5.0+)
-```
-/csms create/Name
-/csms stats/Name
-/csms sync/Name
-/csms reset/Name
-/csms cleanup
-/csms roll/Caller/action          ← solo roll
-/csms roll/Caller/action/Opponent ← opposed roll (Opponent uppercase = NPC, lowercase = object)
-/csms update/stats/Name           ← sync stats from CS entry field
-/csms update/inventory/Name       ← sync inventory from CS notes field
-```
-
-### Slash-arg Rules
-- Args split on `/` — multi-word args work naturally: `/csms roll/Nikolai/pick the lock/safe`
-- Uppercase arg3 = living NPC → script searches for character sheet, errors if not found
-- Lowercase arg3 = object → solo roll, no sheet search, AI judges outcome vs context
-- Missing arg3 = solo roll
-
 ---
 
 ## Roll Flow
 
 ```
-Player: > You punch the thug /csms roll/Nikolai/punch/Thug
+Player: > You pick the lock /csms roll
   ↓
-Input hook — strips /csms roll/Nikolai/punch/Thug
-handleRoll() — caller=Nikolai, action=punch, opponent=Thug (uppercase = NPC)
-findCharacter(Thug) → found → set state.csmsRollPending = { caller, action, oppose }
+Input hook — strips /csms roll, stores "pick the lock" in state.csmsRollPending
   ↓
-Context hook — detects csmsRollPending, oppose is set
-Appends:
-## Reply with exactly two lines.
-Line 1: most relevant stat for Nikolai to "punch": STR, DEX, CON, INT, WIS, or CHA.
-Line 2: most relevant stat for Thug to oppose this: STR, DEX, CON, INT, WIS, or CHA.
+Context hook — detects csmsRollPending
+Appends: ## Reply with only one word — the most relevant stat for "pick the lock": STR, DEX, CON, INT, WIS, or CHA.
   ↓
-AI responds: "STR\nSTR" (or any two stats)
+AI responds: "DEX" (or "Dexterity" or similar)
   ↓
 Output hook — rollCheck() detects csmsRollPending
-Parses callerStat=STR, opposeStat=STR
-resolveRoll("1d20+STR", Nikolai) → { total: 16, breakDown: "..." }
-resolveRoll("1d20+STR", Thug)   → { total: 9,  breakDown: "..." }
-finalResult = 16 - 9 = 7
-Nikolai wins → resolveDamage(Nikolai, 7) → 1d6+7 = [3]+7 = 10
-applyDamage(Thug, 10) → Thug HP updated → updateCharacterCard(Thug)
-notify(full breakdown)
-text = "## Continue the story. Nikolai attempted to punch. Nikolai rolled 16 against 9 of Thug. Nikolai wins and 10 damage applied to Thug. Thug left with X HP."
+Regex matches stat from AI response
+resolveRoll("1d20+DEX", player, "normal") → { total: 16, breakDown: "1d20+DEX = [14] + DEX(+2) = 16" }
+notify("You initiated a roll: pick the lock\n1d20+DEX = [14] + DEX(+2) = 16")
+text = "## Continue the story. The player attempted to pick the lock. Roll result: 16 (1d20+DEX = [14] + DEX(+2) = 16)."
 state.csmsRollPending = null
+  ↓
+Player sees: [!NOTIFICATION!\nYou initiated a roll: pick the lock\n1d20+DEX = [14] + DEX(+2) = 16]
+             + ## instruction (not shown directly, feeds next AI turn)
   ↓
 Player presses Continue
   ↓
-AI reads ## instruction → narrates punch outcome informed by roll result
-```
-
-### Solo Roll Flow
-```
-Player: > You pick the lock /csms roll/Nikolai/pick the lock
-  ↓
-handleRoll() — no arg3 → oppose = null → state.csmsRollPending = { caller, action, oppose: null }
-  ↓
-Context hook — single ## line asking for one stat
-  ↓
-AI responds: "DEX"
-  ↓
-Output hook — rollCheck() solo branch
-resolveRoll("1d20+DEX", Nikolai) → result
-notify(breakdown)
-text = "## Continue the story. Nikolai attempted to pick the lock. Nikolai rolled 14."
-  ↓
-AI narrates — judges success/failure by context (bank safe vs bathroom cabinet)
+AI reads ## instruction → narrates outcome based on roll result 16
 ```
 
 ---
@@ -273,85 +221,6 @@ Player sees: [Character sheet generated for Mira!] + normal narrative
 
 ---
 
-## Ordinance System Design (Planned)
-
-### What Are Ordinances
-Ordinances are story card-based abilities that allow world builders and players to modify how core mechanics behave — without breaking narrative logic. They are conditional rule modifiers that work *with* the existing dice and combat system.
-
-Examples:
-- Counter attack on a lost roll — even the loser can deal half damage
-- Double strike on a won roll — winner deals the same damage twice
-- Faction leader calls reinforcements once per combat
-- Combat style that modifies how damage is calculated
-
-### Philosophy
-- **Script's job:** detect ordinance usage, inject ordinance card entry into context, execute dice rolls, apply results
-- **AI's job:** read ordinance rules, judge conditions, decide formula, narrate outcome
-- World builder writes the rules in natural language — AI interprets, script executes
-
-### Ordinance Card Format
-Free-form natural language. No fixed structure required. Example:
-```
-Counter Strike:
-When the character loses a roll, they may still deal half damage to the opponent.
-Damage = half of opponent's damage roll, rounded down.
-Output the roll breakdown before narrating outcome.
-```
-
-### Script-AI Contract
-AI reads ordinance rules and outputs formula in parseable tag:
-```
-[ROLL:XdY+Z]     ← any valid dice notation e.g. [ROLL:3d6+2] or [ROLL:1d8+WIS]
-[DAMAGE:XdY+Z]   ← damage application e.g. [DAMAGE:2d4+1]
-```
-
-Script parses tag → calls `resolveRoll()` → applies result → feeds result back to AI → AI narrates.
-
-### Command (planned)
-```
-/csms ordinance/OrdinanceName
-```
-
----
-
-## Inventory System Design (v1.6.0+)
-
-### Problem
-AID has no native inventory system. Items appear from nowhere, vanish after a few actions, and the AI has no reliable source of truth for what a character is carrying.
-
-### Solution
-Inventory lives in the CS story card's Notes field (description in API). Player edits manually, script syncs to state on command. Script injects inventory into context only when the player explicitly calls for it.
-
-### Format
-```
-[Inventory]
-- dark blazer
-- BMW keys
-- apple smartphone
-- $1000 cash
-- cracked glass bottle
-- glass bottle
-- glass bottle
-- account ledger
-- notes "Player annotation goes here."
-```
-
-Each `- item` = one entry. Duplicates are separate lines. Optional `notes "..."` for player annotations.
-
-### State Structure
-```js
-state.characters[i].inventory = ["dark blazer", "BMW keys", "glass bottle", "glass bottle"]
-```
-
-### Responsibility Split
-- Player edits the CS notes card manually
-- Player runs `/csms update/inventory/Name` to sync
-- Script confirms and stores to state
-- AI only sees inventory when player explicitly brings it to context
-- Mistakes are corrected by the player — not restricted by the script
-
----
-
 ## Compatibility Notes
 
 ### Inner Self (LewdLeah)
@@ -359,11 +228,12 @@ state.characters[i].inventory = ["dark blazer", "BMW keys", "glass bottle", "gla
 - IS uses `state` — compatible, use namespaced keys (`state.characters` not `state.char`)
 - IS uses `state.memory` — compatible, don't overwrite IS memory fields
 - Architecture mirrors IS pattern (`InnerSelf("input")` → `CSMS("input")`)
+- IS scans history for character triggers — same approach as our `LOOKBACK_ACTIONS`
 
 ### Auto-Cards
 - AC generates cards by character name keywords — potential overlap
 - Current mitigation: `csms_cs_${name}` prefix on card keys
-- Direct `frontMemory` injection makes keyword matching irrelevant for CSMS internals
+- Better solution: direct `frontMemory` injection (implemented) makes keyword matching irrelevant
 - Tag system works WITH AC — AC generates a card, world maker adds `[CSMS]` tag, CSMS generates sheet
 
 ### General compatibility rule
@@ -388,15 +258,45 @@ README.md           — Public documentation
 
 ---
 
-## Opposed Roll Design (Implemented — v1.5.0)
+## Opposed Roll Design (Planned)
 
 ### Why it's needed
-Without opposed rolls, NPC attacks have no mechanical weight. HP never updates from NPC actions.
+Current system is player-centered — only player rolls. Without opposed rolls, NPC attacks have no mechanical weight. HP never updates from NPC actions. A failed dodge roll is just AI vibes, not a real hit.
 
 Opposed roll closes the loop:
 - Player rolls DEX (dodge) → 6
 - Guard rolls STR (attack) → 15
 - Guard wins by 9 → hit confirmed by script, HP updates, AI narrates
+
+### Proposed AI response format
+Two separate `##` instructions, each asking for one thing:
+
+```
+## Reply with only one word — the most relevant stat for "{action}": STR, DEX, CON, INT, WIS, or CHA.
+## If this action is contested by an NPC, reply OPPOSED:NPCName (first name only). If not, reply SOLO.
+```
+
+AI responds on two lines:
+```
+DEX
+OPPOSED:Guard
+```
+
+### Why two separate blocks instead of pipe format
+Pipe format `DEX | true | Guard` is too complex — AI adds narrative, ignores format, hallucinates fields. Proven from tag system experience. Single-concept responses per line are what reliably survives.
+
+### Parsing
+```js
+const opposedMatch = text.match(/OPPOSED:(\w+)/i);
+const isOpposed = !!opposedMatch;
+const npcName = opposedMatch ? opposedMatch[1] : null;
+// SOLO or anything without OPPOSED: = simple roll, current flow unchanged
+```
+
+### Open questions
+- What if NPC name has spaces (Guard Captain)? `\w+` breaks — instruction says first name only as mitigation
+- After script determines winner — does HP update automatically or just feed result to AI?
+- DC checks (fixed threshold) still undesigned — park until after opposed rolls ship
 
 ### DC vs AC vs Opposed (quick reference)
 | Type | Example | Both sides roll? |
@@ -404,3 +304,98 @@ Opposed roll closes the loop:
 | DC check | Pick a lock (DC 15) | ❌ Player rolls vs fixed number |
 | AC check | Attack someone | ❌ Attacker rolls vs defender's static AC |
 | Opposed roll | Dodge a punch | ✅ Both sides roll, higher wins |
+
+Opposed roll is the priority — it's what makes NPC actions mechanically real.
+
+---
+
+## Ordinance System Design
+
+### What is an Ordinance
+Ordinances are NOT god moves. They are injected rules that steer the narrative logically and non-ridiculously. World builders write them as story cards in natural language. Script detects the trigger, feeds the card entry to AI as context, AI interprets the rules, script handles mechanical outcomes.
+
+Think of it as a prompting mechanic system built into CSMS — working WITH the existing dice and combat system to achieve logical outcomes like dealing damage, stealing inventory, or calling reinforcements.
+
+### Philosophy
+- Ordinance IS: conditional rule injection that extends existing mechanics
+- Ordinance IS NOT: a separate game system, a replacement for dice, a way to bypass narrative logic
+- AI interprets the rules. Script executes the numbers. World maker writes the conditions.
+- How well AI interprets depends on how well the ordinance is written — that's the writer's responsibility.
+
+### Ordinance Card Format
+Free-form natural language. No fixed structure required. Examples:
+
+```
+Quick Strike:
+The character dashes forward and strikes the target before they can react.
+This is a damaging move.
+```
+
+```
+Tactical Reinforcement:
+When engaged in combat, the player may call for reinforcements once per combat.
+Allies arriving = XdY + X.
+X = 1 (hostile territory), 2 (neutral), 3 (allied territory).
+Y = 2 * caller's Wisdom modifier.
+Player must belong to a faction.
+```
+
+```
+Counter Strike:
+When the character loses a roll, they may still deal half damage to the opponent.
+Damage = half of opponent's damage roll, rounded down.
+```
+
+### Command
+```
+/csms ordinance/OrdinanceName/CallerName
+```
+
+### Multi-Step Execution Flow
+Ordinance takes multiple actions to execute correctly. This is intentional — executing wrong in 1 action is worse than executing right in 3.
+
+```
+/csms ordinance/Quick Strike/Nikolai
+    ↓
+Script finds Ordinance card by name
+Script injects card entry + caller context into ## instruction
+    ↓
+Action 1: AI judges — DAMAGING or NON-DAMAGING
+    ↓
+DAMAGING branch:
+  Action 2: AI determines relevant stat → script rolls 1d20+STAT
+    Roll success → Action 3: AI determines damage formula → [DAMAGE:XdY+Z]
+                             Script parses, resolveRoll(), applyDamage()
+                             AI narrates successful strike
+    Roll fail    → AI narrates failure, no damage applied
+    ↓
+NON-DAMAGING branch:
+  Action 2: AI judges — needs a roll or pure narrative?
+    Needs roll   → AI determines stat → script rolls → AI narrates outcome
+    Pure narrative → AI narrates Ordinance effect directly
+```
+
+### Why Multi-Step
+Previous single-step approach caused roll=2 but damage=8 bug. Root cause: roll result and Ordinance execution fired independently. AI had no awareness of roll outcome when deciding damage output.
+
+Fix: roll result must be passed INTO Ordinance execution context. Each step feeds the next. AI never executes damage without knowing if the roll warranted it.
+
+### Blame Policy
+- Wrong `[DAMAGE:]` format → script error → our problem
+- Valid format, wrong numbers → ordinance writer's problem
+- AI misinterprets ordinance entry → writer's problem (write better)
+- Script's contract: **valid format = we calculate it. Period.**
+
+### Parked for Later
+- Ordinance assigned to character sheet — CS should list which ordinances each character has access to
+- Active vs passive Ordinance types
+  - Active = player triggers explicitly via command
+  - Passive = hooks into narrative detection — fires automatically when condition is met in AI output
+- How a character "learns" or "unlocks" an Ordinance
+- Once-per-combat tracking
+- Multiple Ordinance rolls in one output — sequential or simultaneous?
+- Tag format: `[DAMAGE:XdY+Z]` vs `[CSMS:DAMAGE:XdY+Z]` — namespaced safer?
+
+---
+
+
