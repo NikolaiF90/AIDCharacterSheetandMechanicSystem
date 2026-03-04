@@ -348,17 +348,17 @@ Damage = half of opponent's damage roll, rounded down.
 
 ### Command
 ```
-/csms ordinance/OrdinanceName/CallerName
+/csms ordinance/OrdinanceName/TargetName
 ```
 
 ### Multi-Step Execution Flow
 Ordinance takes multiple actions to execute correctly. This is intentional — executing wrong in 1 action is worse than executing right in 3.
 
 ```
-/csms ordinance/Quick Strike/Nikolai
+/csms ordinance/Quick Strike/Guard
     ↓
 Script finds Ordinance card by name
-Script injects card entry + caller context into ## instruction
+Script injects card entry + target context into ## instruction
     ↓
 Action 1: AI judges — DAMAGING or NON-DAMAGING
     ↓
@@ -387,6 +387,7 @@ Fix: roll result must be passed INTO Ordinance execution context. Each step feed
 - Script's contract: **valid format = we calculate it. Period.**
 
 ### Parked for Later
+- Ordinance caller — currently assumes active player. Future: `/csms ordinance/OrdinanceName/TargetName/CallerName` for explicit caller. How to handle this cleanly is an open question.
 - Ordinance assigned to character sheet — CS should list which ordinances each character has access to
 - Active vs passive Ordinance types
   - Active = player triggers explicitly via command
