@@ -179,8 +179,8 @@ Entry:  In this city, no one helps strangers for free.
 
     <h3>Triggering an Ordinance</h3>
     <p>Players trigger Ordinances with:</p>
-    <pre><code>/csms ordinance/OrdinanceName/TargetName</code></pre>
-    <p>The Ordinance name must match the story card title. The target is who or what the Ordinance is aimed at.</p>
+    <pre><code>/csms ordinance/CallerName/OrdinanceName/TargetName</code></pre>
+    <p>Caller is who triggers the Ordinance. Ordinance name must match the story card title exactly. Target is who or what the Ordinance is aimed at. Target is optional for non-combat Ordinances.</p>
 
     <h2>Inventory</h2>
     <p>Each character's inventory lives in the <strong>Notes field</strong> of their sheet card — the description area below the stats. No separate card needed, no character limit.</p>
@@ -191,9 +191,10 @@ Entry:  In this city, no one helps strangers for free.
 - burner phone
 - $200 cash
 - pocket knife
-- notes "found near the docks"</code></pre>
+- note "Meet at X at noon"
+- crumpled paper "The bigger is coming"</code></pre>
 
-    <p>Each item gets its own <code>- item</code> line. Duplicate items are separate lines — no stacking. The optional <code>notes "..."</code> annotation is ignored by the script and preserved as-is. Human readable, AI readable, script parseable.</p>
+    <p>Each item gets its own <code>- item</code> line. Duplicate items are separate lines — no stacking. Items with text on them use quoted format — <code>- note "Meet at X at noon"</code>. These are actual items, not annotations. The quoted text is part of the item name. Script reads the full string as one item, AI reads and understands the content.</p>
 
     <h3>Syncing inventory</h3>
     <p>After editing an inventory card, the player runs:</p>
