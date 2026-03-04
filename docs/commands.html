@@ -48,7 +48,7 @@
       </tr>
       <tr>
         <td>/csms create/[name]</td>
-        <td>Creates a new character sheet. The first character created is marked as the player character. All subsequent  characters are NPCs.</td>
+        <td>Creates a new character sheet. The first character created is marked as the player character. All subsequent characters are NPCs.</td>
       </tr>
       <tr>
         <td>/csms stats</td>
@@ -110,20 +110,20 @@
         <th>Description</th>
       </tr>
       <tr>
-        <td>/csms ordinance/[name]/[target]</td>
+        <td>/csms ordinance/[caller]/[name]/[target]</td>
         <td>Triggers an Ordinance against a target. CSMS finds the Ordinance story card by name, feeds its entry to the AI, and executes the outcome mechanically — including rolls and damage if the Ordinance warrants it. Replace <code>[name]</code> with the Ordinance card title and <code>[target]</code> with the target character's name.</td>
       </tr>
     </table>
 
     <div class="tip-box" style="margin-top: 1.5rem;">
-      <strong>Ordinance example:</strong> If you have an Ordinance card titled <em>Quick Strike</em> and want to use it against a Guard — type <code>/csms ordinance/Quick Strike/Guard</code>. CSMS handles the rest.
+      <strong>Ordinance example:</strong> If you have an Ordinance card titled <em>Quick Strike</em> and Nikolai wants to use it against Borris — type <code>/csms ordinance/Nikolai/Quick Strike/Borris</code>. Target is optional for non-combat Ordinances: <code>/csms ordinance/Nikolai/Unwavering Focus</code>.
     </div>
 
     <h2>Notes</h2>
 
     <h3>Commands work anywhere in your input</h3>
     <p>You can type a command alongside regular text and both will work. For example:</p>
-    <pre><code>> You size up the guard and make your move. /csms ordinance/Quick Strike/Guard</code></pre>
+    <pre><code>> You size up the guard and make your move. /csms ordinance/Nikolai/Quick Strike/Borris</code></pre>
     <p>The AI sees your action. CSMS intercepts the command.</p>
 
     <h3>Names are case-insensitive</h3>
