@@ -9,118 +9,106 @@
 
 ## What is CSMS?
 
-CSMS is a narrative-first RPG mechanics system for AI Dungeon. It doesn't try to turn AI Dungeon into a traditional TTRPG simulator — it gives the AI *just enough* mechanical grounding to make your story feel real, consequential, and alive.
+CSMS is an Ordinance system for AI Dungeon.
 
-Most stat systems for AID tell the AI what to do. CSMS gives the AI something to *work with*.
+At its core, CSMS lets world builders write conditional rules in natural language — and have those rules execute logically inside the story, without breaking narrative immersion or requiring the AI to do math.
 
----
-
-## Why CSMS over other systems?
-
-There are other DnD and stat systems out there — TATS, Hashtag DnD, and others. They're good. But CSMS is built on a different philosophy:
-
-| Other systems | CSMS |
-|---|---|
-| Script decides outcomes | AI decides outcomes, script tracks them |
-| Hardcoded rules | Flexible narrative mechanics |
-| Player vs numbers | Player vs story |
-| Combat focused | Story focused — combat is just one part |
-| Single character | Multi-character, NPC sheets included |
-| Fixed ruleset | Designed to be extended |
-
-CSMS doesn't replace the AI's judgment — it *informs* it. The dice create friction. The stats give context. The AI decides what it all means in the story.
+Everything else in CSMS — character sheets, dice, inventory, combat — exists to support that. You can use each piece independently. But Ordinance is why CSMS exists.
 
 ---
 
-## Features (Current)
+## What is an Ordinance?
 
-- Multi-character support — player and NPCs share the same system
-- Dynamic story card character sheets — visible to both player and AI
-- Editable stats directly from story card — script validates and syncs automatically
-- Case-insensitive command handling with punctuation stripping
-- Bracketed notifications — script communicates to player without breaking AI narrative
-- Debug logging system with timestamps (NotifyThem)
-- Orphaned card cleanup
-- Compact character data injection into AI context — efficient even with large parties
-- Multiplayer compatible — auto-creates sheets on join, detects active player, syncs on name change
-- Banned names protection — prevents invalid character names
-- **Tag system** — add `[CSMS]` to any story card title, AI reads the entry and auto-generates a character sheet when that character appears in the story
-- **Dice engine** — full roll notation support (`1d20+STR`, advantage, disadvantage) with D&D 5e stat modifiers
-- **Player roll command** — `/csms roll [action]` lets player invoke mechanics explicitly; AI determines the relevant stat, script rolls the dice, result feeds back into the narrative
-- Module toggles — enable/disable CHARACTER_SHEETS, COMBAT, FEATS independently
-- D&D 5e stat foundation (STR, DEX, CON, INT, WIS, CHA)
-- Designed for compatibility with Inner Self, Auto-Cards, and other popular systems
+An Ordinance is a story card written by a world builder that injects conditional logic into the narrative. Not a god move. Not a cheat. Just a rule that steers the story in a direction that makes sense.
+
+Some examples of what an Ordinance can do:
+
+- A gang leader calls for reinforcements — the number of allies depends on whose territory they're in
+- A character with a counter-strike style can deal half damage even when losing a roll
+- A character dashes behind a target before striking — damaging only if the roll succeeds
+- A faction leader negotiates differently depending on their reputation stat
+
+The world builder writes the conditions. The AI interprets them. The script executes the numbers. Three responsibilities, cleanly separated.
 
 ---
 
-## Planned Features
+## How It Works
 
-- Damage and HP tracking
-- Feat system (natural language, AI-interpreted)
-- Inventory system
-- NotifyThem as standalone publishable system
+```
+Player triggers an Ordinance
+    ↓
+Script finds the Ordinance card, feeds the entry to AI
+    ↓
+AI judges what kind of action this is
+    ↓
+Damaging move   → roll first → success: damage applied / fail: narrate only
+Non-damaging    → roll if needed → AI narrates outcome
+Pure narrative  → AI narrates directly, no mechanics needed
+```
+
+No free damage. No bypassing dice. Every Ordinance that could hurt something goes through a roll first — even if the card doesn't explicitly say so.
+
+---
+
+## The Tools
+
+Everything below supports the Ordinance system. Each module can be enabled or disabled independently.
+
+**Character Sheets** — tracks stats, HP, AC, speed per character. Player and NPCs share the same system. Editable directly from story card UI.
+
+**Tag System** — add `[CSMS]` to any story card title. When that character appears in the story, CSMS automatically generates their sheet from the card description. No manual stat assignment needed.
+
+**Dice Engine** — full roll notation support (`1d20+STR`, advantage, disadvantage). Modifier calculation built in.
+
+**Roll Command** — `/csms roll [action]` lets the player invoke mechanics explicitly. AI determines the relevant stat. Script rolls. Result feeds back into the narrative.
+
+**Inventory** — item tracking per character, stored in the character sheet card. Player edits manually, script syncs.
+
+**Combat** — HP tracking, damage application, death states. Feeds into Ordinance execution for any damaging moves.
 
 ---
 
 ## Commands
 
 ```
-/csms create [name]    — Create a new character sheet
-/csms stats [name]     — Refresh character sheet display
-/csms sync [name]      — Sync story card edits back to state
-/csms reset [name]     — Remove a specific character
-/csms reset            — Remove all characters
-/csms cleanup          — Remove orphaned story cards
-/csms roll [action]    — Roll dice for an action (AI determines stat)
+/csms create [name]              — Create a new character sheet
+/csms stats [name]               — Refresh character sheet display
+/csms sync [name]                — Sync story card edits back to state
+/csms reset [name]               — Remove a specific character
+/csms reset                      — Remove all characters
+/csms cleanup                    — Remove orphaned story cards
+/csms roll [action]              — Roll dice for an action (AI determines stat)
+/csms ordinance/Name/Character   — Trigger an Ordinance for a character
 ```
 
 ---
 
-## Tag System
+## Writing Ordinances
 
-The tag system lets world makers pre-define characters without manually assigning stats. Just add `[CSMS]` to the beginning of any story card title:
-
-```
-Title:  [CSMS] Mira
-Entry:  Mira is a battle-hardened mercenary with years of
-        combat experience. She's fast, strong, and ruthless.
-        Her body is covered in scars from countless fights.
-```
-
-When Mira's name appears in the story, CSMS automatically:
-1. Reads the card entry
-2. Has the AI determine appropriate stats from the description
-3. Creates a proper character sheet
-4. Removes the `[CSMS]` tag from the original card
-
-The original card stays untouched. Works with manually created cards, AC-generated cards, or any other source.
-
----
-
-## Roll System
-
-CSMS puts mechanics in the player's hands. When an action has an uncertain outcome, the player invokes a roll explicitly:
+Ordinances are story cards. The title is the Ordinance name. The entry is free-form natural language — write it like you're explaining a rule to the AI.
 
 ```
-> You try to pick the lock /csms roll
-> /csms roll convince the guard to let you pass
-> You attempt to leap across the gap /csms roll
+Title:  Quick Strike
+Entry:  The character dashes forward and strikes the target before
+        they can react. This is a damaging move.
 ```
 
-**What happens:**
-1. Script strips the command, stores the clean action text
-2. Context hook injects a one-word stat question to the AI
-3. AI replies with the relevant stat (DEX, STR, CHA, etc.)
-4. Output hook catches the stat, rolls `1d20 + modifier`, replaces AI's response with the result
-5. Player sees a notification with the full breakdown (e.g. `1d20+DEX = [14] + DEX(+2) = 16`)
-6. Player presses Continue — AI narrates the outcome informed by the roll result
+```
+Title:  Tactical Reinforcement
+Entry:  When engaged in combat, the caller may request reinforcements
+        once per combat. Allies arriving = XdY + X, where X depends
+        on territory control: 1 (hostile), 2 (neutral), 3 (allied).
+        Y = 2 × caller's Wisdom modifier. Caller must belong to a faction.
+```
 
-The AI determines *what* stat applies. The script handles *how* the dice fall. The AI decides *what it means* for the story.
+```
+Title:  Counter Strike
+Entry:  When this character loses a roll, they may still deal half
+        damage to the opponent. Damage = half of opponent's roll,
+        rounded down.
+```
 
-**Roll modes** (used internally, available for future DC/opposed checks):
-- `normal` — standard single roll
-- `advantage` — roll twice, take higher
-- `disadvantage` — roll twice, take lower
+**The script's contract:** if the formula is valid, it gets calculated. If the numbers are wrong — that's on the Ordinance writer. Write clearly, write precisely.
 
 ---
 
@@ -150,23 +138,21 @@ modifier(text)
 
 ## Configuration
 
-At the top of `library.js` you'll find two config blocks:
-
 ```js
 const CSMS_CONFIG =
 {
   MODULES:
   {
-    CHARACTER_SHEETS: true,  // includes tag system + context injection
-    COMBAT: true,            // uses dice internally, needs CHARACTER_SHEETS
-    FEATS: true,             // uses dice internally, needs CHARACTER_SHEETS
-    INVENTORY: false,        // Future — not yet implemented
+    CHARACTER_SHEETS: true,  // tag system + context injection
+    COMBAT: true,            // HP tracking, damage application
+    ORDINANCE: true,         // the whole point
+    INVENTORY: true,         // item tracking per character
   },
 
   STAT_MAX: 50,
   STAT_MIN: 1,
-  AVERAGE_STAT: 10,          // Used for modifier calculation (D&D 5e formula)
-  DEFAULT_STAT: 10,          // Initial value assigned to all stats on creation
+  AVERAGE_STAT: 10,          // modifier calculation baseline (D&D 5e formula)
+  DEFAULT_STAT: 10,
   DEFAULT_HP: 10,
   DEFAULT_AC: 10,
   DEFAULT_SPEED: 30,
@@ -177,81 +163,54 @@ const CSMS_CONFIG =
   AUTO_GENERATION_TAG: "[CSMS]",
   BANNED_NAMES: ["you", "adventurer"],
 }
-
-const NOTIFY_CONFIG =
-{
-  NOTIFICATION_HEADER: "!NOTIFICATION!",
-  DEBUG_MODE: false
-}
 ```
-
-Set `DEBUG_MODE: true` while building your scenario. Set to `false` before publishing.
 
 ---
 
 ## Multiplayer
 
-CSMS is fully multiplayer compatible. In third-person multiplayer adventures:
-- Character sheets are **auto-created** when players join — no `/csms create` needed
-- The active player is detected automatically from input
-- If a player renames their character mid-session, their old sheet is removed and a new one created automatically
-- "You" and other banned names are silently ignored during auto-creation
-
----
-
-## Editing Stats
-
-Players can edit their character sheet directly from the story card UI. Just change any value and the script will:
-- Validate the new value on the next action
-- Fall back to the last known good value if invalid
-- Notify the player of any errors
-- Rewrite the card cleanly
-
-Use `/csms sync [name]` to force an immediate sync after editing.
+CSMS is fully multiplayer compatible:
+- Sheets auto-created when players join — no `/csms create` needed
+- Active player detected automatically from input
+- Name changes mid-session handled automatically
+- Banned names silently ignored during auto-creation
 
 ---
 
 ## Philosophy
 
-CSMS is built by a scripter, for scripters. Every design decision has a reason:
-
-- **AI does the heavy lifting** — script handles math and state, AI handles narrative judgment
-- **Player agency** — player decides when mechanics apply, AI decides what stat, script produces the number
-- **Minimal action steps** — player shouldn't need 5 commands to do 1 thing
-- **Compatible by default** — works alongside Inner Self, Auto-Cards, and other systems
-- **Transparent** — bracketed notifications keep players informed without breaking immersion
-- **Extensible** — clean architecture, each feature is its own layer
-- **World builder friendly** — show everything, restrict nothing, warn when something's wrong
+- **Player decides when** mechanics apply
+- **AI decides what** rules apply and how to interpret them
+- **Script decides the numbers** — math is never left to the AI
+- **World maker writes the conditions** — through Ordinance cards, in plain language
+- **Fail loudly** — if something goes wrong, the player is notified
+- **Don't blow the world while lock picking a door** — mechanics are controlled and deliberate. Freedom scales with intent.
 
 ---
 
 ## Project Status
 
-**Phase 1 — Complete ✅**
-Character sheet foundation, commands, NotifyThem integration
+**Phase 1 — Complete ✅** — Character sheets, commands, NotifyThem
 
-**Phase 1.5 — Complete ✅**
-Editable stats, multiplayer, context injection, banned names
+**Phase 1.5 — Complete ✅** — Editable stats, multiplayer, context injection
 
-**Phase 2 — Complete ✅**
-Tag-based auto sheet generation
+**Phase 2 — Complete ✅** — Tag-based auto sheet generation
 
-**Phase 3 — Complete ✅**
-Dice engine, roll notation, stat modifiers, advantage/disadvantage
+**Phase 3 — Complete ✅** — Dice engine, roll notation, stat modifiers
 
-**Phase 4 — Complete ✅**
-Player roll command, AI stat determination, two-action roll flow
+**Phase 4 — Complete ✅** — Player roll command, AI stat determination
 
-**Phase 5 — Planned 📋**
-Feat system (natural language, AI-interpreted)
+**Phase 5 — Complete ✅** — Ordinance skeleton, Inventory MVP
+
+**Phase 6 — Planned 📋** — Ordinance multi-step execution, full damaging/non-damaging flow
 
 ---
 
 ## Credits
 
 Built with zero external dependencies. Compatible with AI Dungeon beta.
-Companion system: **NotifyThem** (included) — standalone notification and debug logging system for AID scripts.
+Companion system: **NotifyThem** (included) — standalone notification and debug logging for AID scripts.
 
 ---
 
-*If you use CSMS or NotifyThem in your scenario, credit is appreciated but not required. If you improve it, share it back.*
+*If you use CSMS in your scenario, credit is appreciated but not required. If you improve it, share it back.*
