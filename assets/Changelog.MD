@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.7.0 — Phase 7: Configuration Card
+*March 2026*
+
+### Config Card System
+- `⚙️ CSMS CFG` story card — live configuration panel, no script editing needed
+- Auto-created on first action if not present — populated with script defaults
+- World maker edits Notes field mid-game → changes take effect next action
+- Works in same action as commands — edit CFG and `/csms create` in one go
+- `initConfigCard()` — creates card if missing, runs in input and context hooks
+- `parseConfigCard()` — reads Notes field, overrides `CSMS_CONFIG` values, runs in input and context hooks
+- Input hook ensures config loads before any command executes
+- Context hook ensures config stays current every action
+
+### Overridable Values
+- Module toggles: `MODULE_CHARACTER_SHEETS`, `MODULE_COMBAT`, `MODULE_ORDINANCE`, `MODULE_INVENTORY`
+- Feature toggles: `DEBUG_MODE`, `ORD_ND_DAMAGE_DETECTION`
+- Stat settings: `STAT_MAX`, `STAT_MIN`, `AVERAGE_STAT`, `DEFAULT_STAT`, `DEFAULT_HP`, `DEFAULT_AC`, `DEFAULT_SPEED`
+- Combat: `DAMAGE_DIE`
+- Technical: `LOOKBACK_ACTIONS`, `INJECTED_SHEET_MAX`, `ORD_PROXIMITY`, `ORD_DEFAULT_ROLL`
+
+### Config Addition
+- `WEBSITE` — project website URL, used in CFG card entry field
+
+---
+
 ## v1.6.0 — Phase 6: Ordinance Execution Engine
 *March 2026*
 
