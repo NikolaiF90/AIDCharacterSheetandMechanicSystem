@@ -393,23 +393,81 @@ NONDAMAGING branch:
   NARRATIVE → Step 3-ND: AI narrates directly, no damage applied
 ```
 
-### Damage Detection — Limitations
-- Pronoun resolution skipped intentionally — "he/him/they" attribution is ambiguous
-- Detection works best with models that lead output with character names (Harbinger, Muse)
-- Models that substitute pronouns for names may miss some damage — documented limitation, not a bug
-- NONDAMAGING path never applies damage regardless of narrative content — model's responsibility to respect the type
+### Damage Detection — How It Works
+Script scans AI narrative using an order-aware, pronoun-resolving damage detection engine.
+
+**Action words** — receiver appears AFTER the word:
+```
+"strikes Borris" → Borris takes damage
+"slamming into your solar plexus" → caller takes damage
+"connects with his jaw" → resolve "his" via chain
+```
+
+**Word stems only** — conjugations handled automatically:
+- Add `"slam"` not `"slamming"`, `"stagger"` not `"staggers"`
+- Leading word boundary `\b` prevents false substring matches e.g. `"sever"` won't match `"however"`
+- Trailing boundary removed — allows `"slam"`, `"slams"`, `"slamming"` all to match
+
+**Pronoun chain resolution** — "him/her/his/them/their" resolved by tracing backwards through sentences:
+```
+"Fuzheng shifts attention toward Borris."   ← name established
+"His fist connects with his jaw."           ← "his jaw" → resolve backwards → Borris
+```
+- If pronoun sentence has no names → scan backwards for nearest sentence with a name
+- If both names in same sentence → whoever appears LATER is the receiver
+- If chain breaks with no resolution → action invalid, no damage applied
+- Models that write clear antecedents will always resolve correctly
+
+**Explicit number detection** — takes priority over tier words:
+```
+"deals 15 damage" → 15 damage applied directly
+"loses 8 HP" → 8 damage applied directly
+```
+Direction resolved by who appears in the 60 chars before the number.
+
+**Damage tiers** — when no explicit number found:
+- Six tiers: glancing (2-6%) → solid (6-14%) → heavy (14-22%) → fierce (22-35%) → brutal (35-50%) → lethal (60-75%)
+- Damage calculated as percentage of max HP — proportional across all power levels
+- Highest matching tier wins
+
+### Damage Detection — Blame Policy
+- No receiver found → action invalid → no damage → not a bug
+- Model uses pronouns without naming antecedent → model's problem (write better)
+- NONDAMAGING path never applies damage regardless of narrative — model's responsibility to respect the type
+- Word list gaps → submit suggestion to GitHub issues rather than editing directly
+
+### Word List Guidelines
+World makers can extend `CSMS_ORD_TIERS` word lists. Rules:
+- **Stem words only** — `"stagger"` not `"staggers"` or `"staggered"`
+- **Action words only** — receiver must appear AFTER the word in narrative
+- **Avoid common words** — `"move"`, `"step"`, `"turn"` appear in non-combat sentences
+- **Test before adding** — one wrong word causes false positives across all Ordinances
+- When in doubt — submit to GitHub instead of editing directly
+
+### Ordinance Assignment
+Characters can be restricted to specific Ordinances via their character sheet Notes field:
+```
+[Ordinances]
+- Quick Strike
+- Unwavering Focus
+```
+- If list is empty → character can use any Ordinance (backwards compatible)
+- If list has entries → only listed Ordinances allowed
+- Add with `/csms update/notes/CharacterName` after editing the card
+- Validation fires before execution — failure narrated naturally in story
 
 ### Blame Policy
-- Wrong `[DAMAGE:]` format → script error → our problem
-- Valid format, wrong numbers → ordinance writer's problem
 - AI misinterprets ordinance entry → writer's problem (write better)
-- Script's contract: **valid format = we calculate it. Period.**
+- AI narrates damage on NONDAMAGING ordinance → model's problem
+- Script's contract: **valid format = we execute it. Period.**
 
 ---
 
-## Inventory Format
+## Character Sheet Notes Field
 
-### Item list
+The Notes (description) field of each character sheet (`📋 Name`) holds two blocks — inventory and assigned ordinances. Both auto-created when character sheet is created.
+
+### Inventory
 ```
 [Inventory]
 - dark blazer
@@ -420,22 +478,42 @@ NONDAMAGING branch:
 - glass bottle
 ```
 
-### Key rules
-- `[Inventory]` block header — script looks for this
+**Rules:**
+- `[Inventory]` block header — script looks for this exactly
 - Each `- item` = one array element
 - Duplicate items = separate lines. No `x3` stacking.
-- Items with inline text use quoted format — `- note "Meet at X at noon"` or `- crumpled paper "The bigger is coming"`. These are **actual items**, not annotations. The quoted text is part of the item name. Script reads the full string as one item. AI reads and understands the content.
+- Items with inline text use quoted format — `- note "Meet at X at noon"`. Quoted text is part of the item name, not an annotation.
 - No special annotation syntax — everything is just an item
+
+### Ordinances
+```
+[Ordinances]
+- Quick Strike
+- Unwavering Focus
+```
+
+**Rules:**
+- `[Ordinances]` block header — script looks for this exactly
+- Each `- Ordinance Name` = one assigned Ordinance
+- Names must match Ordinance card titles exactly (case insensitive)
+- Empty list = no restriction, character can use any Ordinance
+- Has entries = only listed Ordinances allowed, others fail validation
+
+### Syncing Notes
+```
+/csms update/notes/CharacterName
+```
+Run after editing inventory or ordinances in the card. Syncs both blocks to state in one command. Also runs automatically on every context hook.
 
 ---
 
 ### Parked for Later
-- Ordinance assigned to character sheet — CS should list which ordinances each character has access to
 - Passive Ordinance types — fires automatically when condition is met in AI output, no command needed
 - How a character "learns" or "unlocks" an Ordinance
 - Once-per-combat tracking
 - Multiple Ordinance rolls in one output — sequential or simultaneous?
 - NONDAMAGING per-card damage detection flag — card entry contains `DAMAGE_DETECTION: true` to opt in
+- Pronoun resolution across previous actions — currently limited to current output only
 
 ---
 
