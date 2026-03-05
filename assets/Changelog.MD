@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.8.0 — Phase 8: Inventory, Ordinance Assignment & Damage Detection Overhaul
+*March 2026*
+
+### Inventory System
+- Fixed `contine` typo in `parseInventory()` — items were never being skipped correctly
+- `inventory: []` and `ordinances: []` added to `initCharacter()` — all characters start with empty arrays
+- `[Inventory]` and `[Ordinances]` blocks auto-created in Notes field on new character sheet
+- Existing cards without Notes field get blocks added automatically on next update
+- `/csms update/notes/CharacterName` — replaces old `update/inventory`, syncs both blocks in one command
+- `handleUpdateSheetNotes()` — new unified handler for Notes field parsing
+
+### Ordinance Assignment
+- `parseOrdinances()` — reads `[Ordinances]` block from character sheet Notes field
+- Characters with entries in `[Ordinances]` can only use listed Ordinances
+- Characters with empty `[Ordinances]` can use any Ordinance — backwards compatible
+- Validation fires in `handleOrdinance()` before execution — hard stop with clear error
+- `parseOrdinances()` called fresh inside `handleOrdinance()` — no timing issues
+
+### Natural Command Replacement
+- Raw `/csms ordinance/...` command replaced with natural prose in story feed
+- `naturalizeOrdinanceCommand()` — generates natural text from command arguments
+- Success: `"execute [Ordinance] against [Target]."`
+- Failure: `"try to use [Ordinance] against [Target], but failed to do so."`
+- `processCommand()` — handles command post-processing in input hook, keeps hook clean
+- AI reads natural prose instead of raw command — narrates correctly in both cases
+
+### Damage Detection — Full Rewrite
+- `resolveReceiver()` — order-aware, pronoun-resolving damage direction engine
+- Checks 25-char window after action word for immediate receiver
+- Direct name match → applies damage to that character
+- `you/your` → caller takes damage
+- `him/her/his/them/their` → pronoun chain resolution
+- Chain resolution scans backwards through sentences to find antecedent
+- No receiver found → action invalid → no damage, no false positives
+- Asymmetric word boundaries — leading `\b` prevents false substring matches, trailing removed for conjugations
+- `CSMS_ORD_TIERS` expanded — more action words across all tiers
+- Reaction words removed — too ambiguous, replaced with more action words
+
+### Config Card Addition
+- `ORD_ND_DAMAGE_DETECTION` now properly toggleable via `⚙️ CSMS CFG` card
+
+---
+
 ## v1.7.0 — Phase 7: Configuration Card
 *March 2026*
 
