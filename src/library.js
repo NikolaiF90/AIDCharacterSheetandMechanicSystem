@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.7.0 by PrinceF90
+// v1.8.0 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -63,33 +63,33 @@ const CSMS_ORD_TIERS =
 {
   glancing:  
   {
-    range: [0.02, 0.06], words: 
-    ["graze", "brush", "glance", "clip", "nick", "scratch", "tap", "flick", "skim"] 
+    range: [0.02, 0.06],
+    words: ["graze", "brush", "clip", "nick", "scratch", "tap", "flick", "skim", "catch", "nudge", "bump", "touch"]
   },
   solid:     
   {
-    range: [0.06, 0.14], words: 
-    ["hit", "strike", "cut", "slash", "jab", "smack", "thud", "crack", "connect", "land"] 
+    range: [0.06, 0.14],
+    words: ["hit", "strike", "cut", "slash", "jab", "smack", "crack", "connect", "land", "snap", "knock", "jolt", "send", "floor", "drop"]
   },
   heavy:     
   {
-    range: [0.14, 0.22], words: 
-    ["slam", "drive", "pierce", "gouge", "pound", "crash", "pummel", "hammer", "thrust"]
+    range: [0.14, 0.22],
+    words: ["slam", "drive", "pierce", "gouge", "pound", "crash", "pummel", "hammer", "thrust", "hurl", "plow", "barrel", "crunch"]
   },
-  fierce:    
+  fierce:  
   {
-    range: [0.22, 0.35], words: 
-    ["maul", "rend", "tear", "cleave", "devastate", "batter", "wrench", "savage", "shatter"]
+    range: [0.22, 0.35],
+    words: ["maul", "rend", "tear", "cleave", "batter", "wrench", "savage", "shatter", "mangle", "cripple", "splinter", "crush", "break", "fracture"]
   },
   brutal:    
   {
-    range: [0.35, 0.50], words: 
-    ["obliterate", "annihilate", "pulverize", "rupture", "eviscerate", "decimate", "destroy"]
+    range: [0.35, 0.50],
+    words: ["obliterate", "annihilate", "pulverize", "eviscerate", "decimate", "destroy", "shred", "mutilate", "demolish", "flatten", "incapacitate"]
   },
   lethal:    
   {
-    range: [0.60, 0.75], words: 
-    ["sever", "impale", "disembowel", "split", "incinerate", "disintegrate", "liquefy"]
+    range: [0.60, 0.75],
+    words: ["sever", "impale", "disembowel", "incinerate", "disintegrate", "liquefy", "behead", "dismember", "gut", "skewer", "execute"]
   },
 };
 
@@ -561,7 +561,7 @@ function CSMS(hook)
     const callerPronouns = ["you", "your", "i ", "i'm", "i've", "my", "me"];
 
     const result = { caller: null, target: null };
-
+    
     // ---- EXPLICIT NUMBER DETECTION ----
     const explicitMatch = output.match(/(\d+)\s*(?:damage|dmg|hp|points?)\b/i)
                       || output.match(/dealt?\s+(\d+)/i)
@@ -585,11 +585,12 @@ function CSMS(hook)
       {
         result.caller = { tier: "explicit", damage: dmg };
       }
-
+      
       return result;
     }
 
     // ---- TIER WORD DETECTION ----
+    // Tier scan - highest first, first match wins
     const tierOrder = ["lethal", "brutal", "fierce", "heavy", "solid", "glancing"];
 
     for (const tierName of tierOrder)
@@ -598,37 +599,95 @@ function CSMS(hook)
 
       for (const word of tier.words)
       {
-        const wordIdx = output.toLowerCase().search(new RegExp(`\\b${word}\\b`));
+        const wordIdx = output.toLowerCase().search(new RegExp(`\\b${word}`));
         if (wordIdx === -1) continue;
 
-        // Who appears in the 60 characters AFTER the damage word?
-        const after = output.toLowerCase().slice(wordIdx, wordIdx + 60);
+        const receiver = resolveReceiver(output, wordIdx, callerName, targetName);
+        if (!receiver) continue; // no valid receiver — skip
 
-        const isTargetHit = after.includes(targetLow);
-        const isCallerHit = after.includes(callerLow)
-                        || callerPronouns.some(p => after.includes(p));
+        const [min, max] = tier.range;
 
-        if (isTargetHit && !result.target)
+        if (receiver === "target" && !result.target)
         {
-          const [min, max] = tier.range;
           const dmg = Math.max(1, Math.round(targetMaxHp * (min + Math.random() * (max - min))));
           result.target = { tier: tierName, damage: dmg };
         }
-        else if (isCallerHit && !result.caller)
+        else if (receiver === "caller" && !result.caller)
         {
-          const [min, max] = tier.range;
           const dmg = Math.max(1, Math.round(callerMaxHp * (min + Math.random() * (max - min))));
           result.caller = { tier: tierName, damage: dmg };
         }
 
-        // Both found — no need to keep scanning
         if (result.caller && result.target) break;
       }
-      
+
       if (result.caller && result.target) break;
     }
 
     return result;
+  }
+
+  // Used when receiver is ambiguous like him
+  function resolveReceiver(output, wordIdx, callerName, targetName)
+  {
+    const callerLow = callerName.toLowerCase();
+    const targetLow = targetName.toLowerCase();
+
+    // Check immediate window after action word (~15 chars)
+    const nearAfter = output.toLowerCase().slice(wordIdx, wordIdx + 25);
+
+    // Explicit caller pronouns
+    if (/\byou\b|\byour\b/.test(nearAfter)) return "caller";
+
+    // Explicit names
+    if (nearAfter.includes(callerLow)) return "caller";
+    if (nearAfter.includes(targetLow)) return "target";
+
+    // Him/them/her — chain resolve
+    if (/\bhim\b|\bthem\b|\bher\b|\bhis\b|\btheir\b/.test(nearAfter))
+    {
+      // Split into sentences, find which one contains our word
+      const sentences = output.toLowerCase().split(/[.!?]+/);
+      const wordSentenceIdx = sentences.findIndex(s => 
+        output.toLowerCase().indexOf(s.trim()) <= wordIdx && 
+        output.toLowerCase().indexOf(s.trim()) + s.length >= wordIdx
+      );
+
+      // Scan backwards from current sentence
+      for (let i = wordSentenceIdx; i >= 0; i--)
+      {
+        const s = sentences[i];
+        const hasHim    = /\bhim\b|\bthem\b|\bher\b|\bhis\b|\btheir\b/.test(s);
+        const hasCaller = s.includes(callerLow);
+        const hasTarget = s.includes(targetLow);
+
+        // Same sentence has pronoun + name — clear attribution
+        if (hasHim && hasTarget && !hasCaller) return "target";
+        if (hasHim && hasCaller && !hasTarget) return "caller";
+
+        // Both names in same sentence — whoever appears later is receiver
+        if (hasCaller && hasTarget)
+        {
+          return s.lastIndexOf(targetLow) > s.lastIndexOf(callerLow)
+            ? "target"
+            : "caller";
+        }
+
+        // Pronoun sentence has no names — look back for nearest name
+        if (hasHim && !hasCaller && !hasTarget)
+        {
+          for (let j = i - 1; j >= 0; j--)
+          {
+            const prev = sentences[j];
+            if (prev.includes(targetLow)) return "target";
+            if (prev.includes(callerLow)) return "caller";
+          }
+        }
+      }
+    }
+    
+    // No receiver found — invalid
+    return null;
   }
 
   // ==================
@@ -655,7 +714,9 @@ function CSMS(hook)
         int: CSMS_CONFIG.DEFAULT_STAT,
         wis: CSMS_CONFIG.DEFAULT_STAT,
         cha: CSMS_CONFIG.DEFAULT_STAT  
-      }
+      },
+      inventory:  [],
+      ordinances: [],
     };
   }
 
@@ -824,12 +885,24 @@ function CSMS(hook)
       `INT: ${c.stats.int} (${statMod(c.stats.int)})  WIS: ${c.stats.wis} (${statMod(c.stats.wis)})  CHA: ${c.stats.cha} (${statMod(c.stats.cha)})`,
     ].join("\n");
 
+    const cNotes = [
+      `[Inventory]`,
+      ``,
+      `[Ordinances]`
+    ].join("\n");
+
     const cardTitle = `📋 ${c.name}`;
 
     const existing = storyCards.find(card => card.title === cardTitle);
     if (existing)
     {
       existing.entry = cEntry;
+      // Only add notes if missing - never overwrite existitng inventory/ordinances
+
+      if (!existing.description || !existing.description.includes("[Inventory]"))
+      {
+        existing.description = cNotes;
+      }
     }
     else
     {
@@ -837,7 +910,7 @@ function CSMS(hook)
         title: cardTitle,
         keys: `csms_cs_${c.name}, ${CSMS_CONFIG.TEMP_TRIGGER}`,
         entry: cEntry,
-        description: ""
+        description: cNotes
       });
     }
   }
@@ -1021,6 +1094,43 @@ function CSMS(hook)
   // ==================
   // ORDINANCE
   // ==================
+
+  // Make the input sounds more natural
+  function naturalizeOrdinanceCommand(csmsText, failed)
+  {
+    const parts        = csmsText.split("/");
+    const ordinanceArg = parts[3]?.trim().replace(/[.,!?"]+$/, "") || "";
+    const targetArg    = parts[4]?.trim().replace(/[.,!?"]+$/, "") || "";
+
+    return failed
+      ? `try to use ${ordinanceArg}${targetArg ? ` against ${targetArg}` : ""}. The attempt fails.`
+      : `execute ${ordinanceArg}${targetArg ? ` against ${targetArg}` : ""}.`;
+  }
+
+  // Sync ordinances from character with CS card
+  function parseOrdinances(character)
+  {
+    const c = character;
+    const card = storyCards.find(card => card.title === `📋 ${c.name}`);
+    if (!card || !card.description) return;
+
+    const description = card.description;
+    const blockStart  = description.indexOf("[Ordinances]");
+    if (blockStart === -1) return;
+
+    const block = description.slice(blockStart);
+    const lines = block.split("\n");
+    const ordinances = [];
+
+    for (const line of lines)
+    {
+      const trimmed = line.trim();
+      if (trimmed === "[Ordinances]") continue;
+      if (trimmed.startsWith("- ") || trimmed.startsWith("-")) ordinances.push(trimmed.replace(/^-\s*/, "").trim());
+    }
+
+    c.ordinances = ordinances;
+  }
 
   function processOrdinanceTags()
   {
@@ -1271,7 +1381,6 @@ function CSMS(hook)
     for (const line of lines)
     {
       const trimmed = line.trim();
-      if (trimmed.startsWith("notes ")) contine; // preserve, skip
       if (trimmed.startsWith("- ")) items.push(trimmed.slice(2).trim());
     }
 
@@ -1284,6 +1393,21 @@ function CSMS(hook)
   // ==================
   // COMMANDS / HANDLER
   // ==================
+
+  function processCommand(csmsMatch, result)
+  {
+    // ORDINANCE
+    const isOrdinance = csmsMatch[0].toLowerCase().includes("ordinance");
+    if (isOrdinance)
+    {
+      const failed = result && (
+        result.includes(CSMS_CONFIG.ORD_ERROR.trim()) || 
+        result.includes("[Ordinance Failed]")
+      );
+
+      text = text.replace(csmsMatch[0], naturalizeOrdinanceCommand(csmsMatch[0], failed));
+    }
+  }
 
   function handleCreate(param)
   {
@@ -1479,6 +1603,23 @@ function CSMS(hook)
       return `${CSMS_CONFIG.ORD_ERROR}Caller "${callerName}" has no character sheet.\nCreate one with /csms create/${callerName}`;
     }
 
+    // Sync ordinances fresh before validating
+    parseOrdinances(callerChar);
+   
+    // Validate caller has this Ordinance assigned
+    if (callerChar.ordinances && callerChar.ordinances.length > 0)
+    {
+      const hasOrdinance = callerChar.ordinances.some(
+        o => o.toLowerCase().trim() === ordinanceName.toLowerCase().trim()
+      );
+
+      if (!hasOrdinance)
+      {
+        return `[Ordinance Failed] ${callerChar.name} does not have "${ordinanceName}" assigned. Attempt unsuccessful.`;
+      }
+    }
+    // If ordinances list is empty — skip validation, assume all allowed
+
     // Validate target exist - only if provided
     const targetChar = targetName ? findCharacter(targetName) : null;
 
@@ -1498,13 +1639,16 @@ function CSMS(hook)
     return `Ordinance "${ordCard.title}" — ${callerChar.name} vs ${targetChar ? targetChar.name : "no target"}. Executing...`;
   }
 
-  function handleUpdateInventory(name)
+  // Updates Character Card Notes section by command
+  function handleUpdateSheetNotes(name)
   {
     const c = name ? findCharacter(name) : getActivePlayer();
     if (!c) return `No character named ${name} found.`;
+    
     parseInventory(c);
+    parseOrdinances(c);
 
-    return `${c.name}'s inventory synced.`;
+    return `${c.name}'s sheet notes synced.`;
   }
 
   //--------------------------
@@ -1523,8 +1667,8 @@ function CSMS(hook)
     switch(action)
     {
       case "update":
-      if (args1 === "inventory")  return handleUpdateInventory(args2);
-      if (args1 === "stats")      return handleSync(args2);
+      if (args1 === "notes")    return handleUpdateSheetNotes(args2);
+      if (args1 === "stats")    return handleSync(args2);
       return `Unknown update target. Use "stats" or "inventory"`;
       case "create":      return handleCreate(args1);
       case "check":       return handleStats(args1);
@@ -1561,6 +1705,9 @@ function CSMS(hook)
     {
       const result = parseCommand(csmsMatch[0].trim());
       if (result) notify(result, result);
+      
+      // Replace raw commands with natural prose
+      processCommand(csmsMatch, result);
     }
   }
 
@@ -1572,6 +1719,7 @@ function CSMS(hook)
     state.characters.forEach(c =>
     {
       parseCharacterCard(c);
+      parseOrdinances(c);
     });
     
     injectActiveCharacters();
