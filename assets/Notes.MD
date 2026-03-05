@@ -346,39 +346,58 @@ When the character loses a roll, they may still deal half damage to the opponent
 Damage = half of opponent's damage roll, rounded down.
 ```
 
+```
+Unwavering Focus:
+When executed, the user clears all debuffs and enters a heightened state of focus.
+Grants a temporary speed and dexterity bonus.
+This is a non-damaging, self-targeted move.
+```
+
 ### Command
 ```
-/csms ordinance/OrdinanceName/TargetName
+/csms ordinance/CallerName/OrdinanceName/TargetName
+```
+Target is optional for non-combat Ordinances:
+```
+/csms ordinance/Nikolai/Unwavering Focus
 ```
 
 ### Multi-Step Execution Flow
 Ordinance takes multiple actions to execute correctly. This is intentional — executing wrong in 1 action is worse than executing right in 3.
 
 ```
-/csms ordinance/Quick Strike/Guard
+/csms ordinance/Nikolai/Quick Strike/Borris
     ↓
-Script finds Ordinance card by name
-Script injects card entry + target context into ## instruction
+Script validates caller, ordinance card, target
+Script stores pending state — step 1
     ↓
-Action 1: AI judges — DAMAGING or NON-DAMAGING
+Step 1: AI judges — DAMAGING or NONDAMAGING
     ↓
 DAMAGING branch:
-  Action 2: AI determines relevant stat → script rolls 1d20+STAT
-    Roll success → Action 3: AI determines damage formula → [DAMAGE:XdY+Z]
-                             Script parses, resolveRoll(), applyDamage()
-                             AI narrates successful strike
-    Roll fail    → AI narrates failure, no damage applied
+  Step 2: AI provides roll notation e.g. 1d20+STR
+  Script resolves roll, stores result
     ↓
-NON-DAMAGING branch:
-  Action 2: AI judges — needs a roll or pure narrative?
-    Needs roll   → AI determines stat → script rolls → AI narrates outcome
-    Pure narrative → AI narrates Ordinance effect directly
+  Step 3: AI narrates outcome freely
+  Script scans narrative for damage words near character names
+  Order-aware — "strikes Borris" → Borris takes damage
+              — "catches you" → caller takes damage
+  Explicit number found → extract and apply
+  No number → severity tier × max HP percentage → apply
+    ↓
+NONDAMAGING branch:
+  Step 2: AI judges — ROLL or NARRATIVE
+    ↓
+  ROLL → Step 2-B: AI provides notation → script rolls
+       → Step 3-ND: AI narrates outcome, no damage applied
+    ↓
+  NARRATIVE → Step 3-ND: AI narrates directly, no damage applied
 ```
 
-### Why Multi-Step
-Previous single-step approach caused roll=2 but damage=8 bug. Root cause: roll result and Ordinance execution fired independently. AI had no awareness of roll outcome when deciding damage output.
-
-Fix: roll result must be passed INTO Ordinance execution context. Each step feeds the next. AI never executes damage without knowing if the roll warranted it.
+### Damage Detection — Limitations
+- Pronoun resolution skipped intentionally — "he/him/they" attribution is ambiguous
+- Detection works best with models that lead output with character names (Harbinger, Muse)
+- Models that substitute pronouns for names may miss some damage — documented limitation, not a bug
+- NONDAMAGING path never applies damage regardless of narrative content — model's responsibility to respect the type
 
 ### Blame Policy
 - Wrong `[DAMAGE:]` format → script error → our problem
@@ -417,13 +436,6 @@ Fix: roll result must be passed INTO Ordinance execution context. Each step feed
 - Once-per-combat tracking
 - Multiple Ordinance rolls in one output — sequential or simultaneous?
 - NONDAMAGING per-card damage detection flag — card entry contains `DAMAGE_DETECTION: true` to opt in
-- **Config Card System (Phase 7)** — a story card (`📋 CSMS Config`) that acts as a live config panel. Script reads it on every action and overrides `CSMS_CONFIG` values. World makers and players can toggle settings mid-game without touching script code. Example:
-```
-Title:  📋 CSMS Config
-Entry:  ORD_ND_DAMAGE_DETECTION: true
-        ORD_PROXIMITY: 60
-        DEBUG_MODE: false
-```
 
 ---
 
