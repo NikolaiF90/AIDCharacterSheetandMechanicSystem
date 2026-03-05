@@ -35,6 +35,42 @@
 
   <div class="content-body">
 
+    <h2>Configuration Card</h2>
+    <p>CSMS automatically creates a <code>⚙️ CSMS CFG</code> story card on first run. This is your live configuration panel — no script editing needed. Edit the Notes field of the card at any time and changes take effect on the next action.</p>
+
+    <div class="tip-box">
+      <strong>Same-action edits work.</strong> Edit the CFG card and run a command in the same action — CSMS reads the card before executing the command. No need for a separate action to apply changes.
+    </div>
+
+    <h3>How to edit</h3>
+    <p>Open the <code>⚙️ CSMS CFG</code> story card and edit the Notes field. Each setting is on its own line in <code>KEY: value</code> format. For features use <code>true</code> or <code>false</code>. For numbers use integers only. For dice keep the <code>XdY</code> format where X is the number of dice and Y is the number of sides.</p>
+
+    <h3>Copy-paste template</h3>
+    <p>The card is created automatically with defaults, but if you ever need to recreate it — copy this into the Notes field:</p>
+
+    <pre><code>MODULE_CHARACTER_SHEETS: true
+MODULE_COMBAT: true
+MODULE_ORDINANCE: true
+MODULE_INVENTORY: true
+DEBUG_MODE: false
+STAT_MAX: 50
+STAT_MIN: 1
+AVERAGE_STAT: 10
+DEFAULT_STAT: 10
+DEFAULT_HP: 10
+DEFAULT_AC: 10
+DEFAULT_SPEED: 30
+DAMAGE_DIE: 6
+LOOKBACK_ACTIONS: 5
+INJECTED_SHEET_MAX: 20
+ORD_PROXIMITY: 50
+ORD_DEFAULT_ROLL: 1d20
+ORD_ND_DAMAGE_DETECTION: false</code></pre>
+
+    <div class="warning-box">
+      <strong>Don't edit the Entry field.</strong> The Entry field is informational only. All configuration lives in the Notes field below it.
+    </div>
+
     <h2>Installation</h2>
     <p>CSMS lives entirely in your scenario's script tabs. There are no external dependencies and nothing to install.</p>
 
@@ -176,6 +212,12 @@ Entry:  When engaged in combat, the caller may request
 Entry:  In this city, no one helps strangers for free.
         Any character attempting an unprompted act of charity
         must pass a CHA check or the recipient demands payment.</code></pre>
+
+    <pre><code>Title:  Unwavering Focus
+Entry:  When executed, the user clears all debuffs and enters
+        a heightened state of focus.
+        Grants a temporary speed and dexterity bonus.
+        This is a non-damaging, self-targeted move.</code></pre>
 
     <h3>Triggering an Ordinance</h3>
     <p>Players trigger Ordinances with:</p>
