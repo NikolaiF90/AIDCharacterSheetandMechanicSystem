@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.6.0 by PrinceF90
+// v1.7.0 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -37,8 +37,11 @@ const CSMS_CONFIG =
   ORD_ERROR: "⚠ ORDINANCE ERROR\n",    // Header for Ordinance error message
   ORD_PROXIMITY: 50,                    // Word window for narraive damage detection
   ORD_DEFAULT_ROLL: "1d20",             // fallback when AI doesn't provide notation
+  ORD_ND_DAMAGE_DETECTION: false,       // Auto-detect damage on non damaging ordinance(failed execution)
   
   /*  TEXT CUSTOMIZATION */
+  // Official CSMS Website
+  WEBSITE: "https://nikolaif90.github.io/AIDCharacterSheetandMechanicSystem/",
   AUTO_GENERATION_TAG: "[CSMS]",    // System will generate Charater Sheet for cards with this tag
   TEMP_TRIGGER: "github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem",
   BANNED_NAMES: ["you", "adventurer"],
@@ -149,6 +152,137 @@ function resetNotification()
 
 function CSMS(hook)
 {
+  // ==================
+  // INITIALIZATION
+  // ==================
+
+  // CFG CARD
+  function initConfigCard()
+  {
+    // Look for existing CFG card
+    const existing = storyCards.find(card => card.title === "⚙️ CSMS CFG");
+    if (existing) return; // Card exists — parseConfigCard() will handle it
+
+    // Create with script defaults
+    const entry = 
+      `CSMS Configuration Card\n` +
+      `Edit values in the Notes field below, not here.\n` +
+      `For features: use true to turn on, false to turn off.\n` +
+      `For numbers: integers only e.g. 10, 50.\n` +
+      `For dice: use XdY format e.g. 1d20, 2d6.\n` +
+      `Full guide: ${CSMS_CONFIG.WEBSITE}`;
+
+    const notes =
+      `MODULE_CHARACTER_SHEETS: true\n` +
+      `MODULE_COMBAT: true\n` +
+      `MODULE_ORDINANCE: true\n` +
+      `MODULE_INVENTORY: true\n` +
+      `DEBUG_MODE: false\n` +
+      `STAT_MAX: 50\n` +
+      `STAT_MIN: 1\n` +
+      `AVERAGE_STAT: 10\n` +
+      `DEFAULT_STAT: 10\n` +
+      `DEFAULT_HP: 10\n` +
+      `DEFAULT_AC: 10\n` +
+      `DEFAULT_SPEED: 30\n` +
+      `DAMAGE_DIE: 6\n` +
+      `LOOKBACK_ACTIONS: 5\n` +
+      `INJECTED_SHEET_MAX: 20\n` +
+      `ORD_PROXIMITY: 50\n` +
+      `ORD_DEFAULT_ROLL: 1d20\n` +
+      `ORD_ND_DAMAGE_DETECTION: false`;
+
+    storyCards.push(
+    {
+      title: "⚙️ CSMS CFG",
+      type: "other",
+      keys: "csms_cfg",
+      entry: entry,
+      description: notes,
+    });
+  }
+
+  // Parse the value - Change the value as cfg card
+  function parseConfigCard()
+  {
+    const card = storyCards.find(card => card.title === "⚙️ CSMS CFG");
+    if (!card || !card.description) return;
+
+    const lines = card.description.split("\n");
+
+    for (const line of lines)
+    {
+      const match = line.match(/^([A-Z_]+):\s*(.+)$/);
+      if (!match) continue;
+
+      const key   = match[1].trim();
+      const value = match[2].trim();
+
+      switch(key)
+      {
+        // Modules
+        case "MODULE_CHARACTER_SHEETS": CSMS_CONFIG.MODULES.CHARACTER_SHEETS = value === "true"; break;
+        case "MODULE_COMBAT":           CSMS_CONFIG.MODULES.COMBAT           = value === "true"; break;
+        case "MODULE_ORDINANCE":        CSMS_CONFIG.MODULES.ORDINANCE        = value === "true"; break;
+        case "MODULE_INVENTORY":        CSMS_CONFIG.MODULES.INVENTORY        = value === "true"; break;
+
+        // Toggles
+        case "DEBUG_MODE":               NOTIFY_CONFIG.DEBUG_MODE                    = value === "true"; break;
+        case "ORD_ND_DAMAGE_DETECTION":  CSMS_CONFIG.ORD_ND_DAMAGE_DETECTION        = value === "true"; break;
+
+        // Integers
+        case "STAT_MAX":          CSMS_CONFIG.STAT_MAX          = parseInt(value); break;
+        case "STAT_MIN":          CSMS_CONFIG.STAT_MIN          = parseInt(value); break;
+        case "AVERAGE_STAT":      CSMS_CONFIG.AVERAGE_STAT      = parseInt(value); break;
+        case "DEFAULT_STAT":      CSMS_CONFIG.DEFAULT_STAT      = parseInt(value); break;
+        case "DEFAULT_HP":        CSMS_CONFIG.DEFAULT_HP        = parseInt(value); break;
+        case "DEFAULT_AC":        CSMS_CONFIG.DEFAULT_AC        = parseInt(value); break;
+        case "DEFAULT_SPEED":     CSMS_CONFIG.DEFAULT_SPEED     = parseInt(value); break;
+        case "DAMAGE_DIE":        CSMS_CONFIG.DAMAGE_DIE        = parseInt(value); break;
+        case "LOOKBACK_ACTIONS":  CSMS_CONFIG.LOOKBACK_ACTIONS  = parseInt(value); break;
+        case "INJECTED_SHEET_MAX":CSMS_CONFIG.INJECTED_SHEET_MAX= parseInt(value); break;
+        case "ORD_PROXIMITY":     CSMS_CONFIG.ORD_PROXIMITY     = parseInt(value); break;
+
+        // Dice notation
+        case "ORD_DEFAULT_ROLL":  CSMS_CONFIG.ORD_DEFAULT_ROLL  = value; break;
+      }
+    }
+  }
+
+
+  initNotify();
+
+  if (state.characters === undefined)
+  {
+    state.characters = [];
+  }
+
+  // Create CS for new player
+  if (info.characters && info.characters.length > 0)
+  {
+    info.characters.forEach(charName =>
+    {
+      if (!charName || charName.trim() === "") return;
+      // Skip banned names
+      if (CSMS_CONFIG.BANNED_NAMES.indexOf(charName.toLowerCase()) !== -1) return;
+
+      // Skip if already exists
+      if (findCharacter(charName)) return;
+
+      // First character created is the player
+      const isFirstPlayer = state.characters.length === 0;
+      const character = initCharacter(charName, isFirstPlayer, true);
+      state.characters.push(character);
+      updateCharacterCard(character);
+      notify(
+        `Character sheet auto-created for ${charName}`, 
+        `auto-created: ${charName}`);
+    });
+  }
+
+  // Always check for ghost
+  syncMultiplayerCharacters();
+
   // ==================
   // UTILITIES
   // ==================
@@ -385,42 +519,6 @@ function CSMS(hook)
     text = `## Continue the story. ${caller} attempted to ${action}. ${closureText}`;
     state.csmsRollPending = null;
   }
-
-  // ==================
-  // INITIALIZATION
-  // ==================
-  initNotify();
-
-  if (state.characters === undefined)
-  {
-    state.characters = [];
-  }
-
-  // Create CS for new player
-  if (info.characters && info.characters.length > 0)
-  {
-    info.characters.forEach(charName =>
-    {
-      if (!charName || charName.trim() === "") return;
-      // Skip banned names
-      if (CSMS_CONFIG.BANNED_NAMES.indexOf(charName.toLowerCase()) !== -1) return;
-
-      // Skip if already exists
-      if (findCharacter(charName)) return;
-
-      // First character created is the player
-      const isFirstPlayer = state.characters.length === 0;
-      const character = initCharacter(charName, isFirstPlayer, true);
-      state.characters.push(character);
-      updateCharacterCard(character);
-      notify(
-        `Character sheet auto-created for ${charName}`, 
-        `auto-created: ${charName}`);
-    });
-  }
-
-  // Always check for ghost
-  syncMultiplayerCharacters();
 
   // ==================
   // COMBAT
@@ -1453,6 +1551,9 @@ function CSMS(hook)
 
   if (hook === "input")
   {
+    // Ensure it fires before any command
+    initConfigCard();   // create card if missing
+    parseConfigCard();  // read card, override config
     // Zeor or one command, no more
     const csmsMatch = text.match(/\/csms[^\n]*/i);
 
@@ -1465,6 +1566,9 @@ function CSMS(hook)
 
   if (hook === "context")
   {
+    initConfigCard();   // create card if missing
+    parseConfigCard();  // read card, override config
+
     state.characters.forEach(c =>
     {
       parseCharacterCard(c);
