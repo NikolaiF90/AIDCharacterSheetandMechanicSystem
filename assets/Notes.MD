@@ -511,9 +511,9 @@ Run after editing inventory or ordinances in the card. Syncs both blocks to stat
 - Passive Ordinance types — fires automatically when condition is met in AI output, no command needed
 - How a character "learns" or "unlocks" an Ordinance
 - Once-per-combat tracking
-- Multiple Ordinance rolls in one output — sequential or simultaneous?
-- NONDAMAGING per-card damage detection flag — card entry contains `DAMAGE_DETECTION: true` to opt in
 - Pronoun resolution across previous actions — currently limited to current output only
+- Auto-created `[Inventory]` and `[Ordinances]` blocks should include one placeholder dash `- ` so players know the format immediately
+- `naturalizeOrdinanceCommand()` — no-target case needs its own natural text e.g. `"execute Unwavering Focus."` instead of `"execute Unwavering Focus against ."`
 
 ---
 
