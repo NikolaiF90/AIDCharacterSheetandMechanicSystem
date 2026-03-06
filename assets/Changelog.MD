@@ -1,6 +1,59 @@
 # Changelog
 
-## v1.8.0 — Phase 8: Inventory, Ordinance Assignment & Damage Detection Overhaul
+## v1.9.0 — Inventory Command System
+*March 2026*
+
+### For Players
+- Inventory management is now natural and seamless — use `iv_` commands directly in your input
+- Pick up items: `iv_take knife`, `iv_grab the car keys`, `iv_tuck gun under blazer`
+- Drop items: `iv_drop wallet`, `iv_discard the note`
+- Give items to characters: `iv_give contract to Barbara`, `iv_hand pen to Borris`
+- Throw items: `iv_throw bottle at Borris`, `iv_hurl knife`
+- Your character sheet inventory updates automatically — no manual editing needed
+- If you don't have the item, AI narrates the failed attempt naturally
+- One `iv_` command per input — choose the inventory-relevant action
+- One item at a time — use separate commands for multiple items
+- Always use character names, not pronouns — `iv_give gun to Borris` not `iv_give gun to him`
+
+### For World Makers
+- `CSMS_IV_KEYWORDS` — keyword map for take, drop, give, hurl actions. Add custom keywords as needed
+- `handleInventoryCommand()` — main parser, detects action, item, receiver from natural input
+- `takeItem()` — adds item to caller inventory, optionally removes from source character
+- `dropItem()` — removes item from caller inventory
+- `giveItem()` — transfers item between two characters with validation
+- `hurlItem()` — removes item from caller, optional target character
+- `updateNotesField()` — writes inventory and ordinances back to character sheet Notes field
+- `parseInventory()` now called in context hook forEach — state stays synced from card every action
+- Auto-repair — missing `[Inventory]` or `[Ordinances]` blocks added automatically to existing sheets
+- `originalText` copy pattern in input hook — permanent fix for timing issues across all systems
+- `getActivePlayer()` accepts optional `inputText` parameter — prevents timing issues when `text` is replaced before caller detection
+
+---
+
+## v1.8.1 — Patch
+*March 2026*
+
+### For Players
+- Character sheets now always include `[Inventory]` and `[Ordinances]` sections — even on older sheets
+- Ordinance commands with no target no longer produce awkward trailing text
+
+### For World Makers
+- Auto-created `[Inventory]` and `[Ordinances]` blocks now include placeholder dash so format is clear
+- `naturalizeOrdinanceCommand()` — no-target case fixed, no trailing "against ."
+
+---
+
+## v1.8.0 — Inventory, Ordinance Assignment & Damage Detection Overhaul
+*March 2026*
+
+### For Players
+- Character sheets now have `[Inventory]` and `[Ordinances]` sections in Notes field
+- Ordinances can be assigned per character — only listed Ordinances can be executed
+- Executing an unassigned Ordinance fails with a clear message
+- Ordinance commands replaced with natural prose in story feed — no more raw `/csms` visible
+- Damage detection completely rewritten — pronouns now resolve correctly, no more ghost damage on clean wins
+
+### For World Makers
 *March 2026*
 
 ### Inventory System
