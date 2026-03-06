@@ -36,13 +36,13 @@
   <div class="content-body">
 
     <h2>What is CSMS?</h2>
-    <p>CSMS is a script running behind the scenes in your AI Dungeon adventure. It gives your character a proper stat sheet, tracks your inventory, handles dice rolls, and lets you trigger Ordinances — all without interrupting the story.</p>
+    <p>CSMS is a script running behind the scenes in your AI Dungeon adventure. It gives your character a proper stat sheet — like a D&D character card — and makes sure the AI always knows your character's abilities when making decisions about your story.</p>
     <p>You don't need to understand how it works. You just need to know how to use it.</p>
 
     <h2>Your Character Sheet</h2>
-    <p>Your character sheet lives in the <strong>Story Cards</strong> panel. Look for a card with a 📋 emoji at the start of the title — that's yours.</p>
+    <p>Your character sheet lives in the <strong>Story Cards</strong> panel (the icon that looks like stacked cards). Look for a card with a 📋 emoji at the start of the title — that's yours.</p>
     <p>It looks like this:</p>
-    <pre><code>Name: Kira | Level: 1 | XP: 0
+    <pre><code>Name: Nikolai | Level: 1 | XP: 0
 HP: 10/10 | AC: 10 | Speed: 30ft
 Proficiency: +2
 
@@ -52,120 +52,101 @@ INT: 10 (+0)  WIS: 10 (+0)  CHA: 10 (+0)</code></pre>
     <p>The AI sees this card when writing your story. If your STR is 18, the AI knows you're incredibly strong. If your HP is low, the AI knows you're in danger.</p>
 
     <h2>Creating Your Character</h2>
-    <p>If the world maker hasn't set up automatic character creation, create your sheet manually:</p>
-    <pre><code>/csms create/YourName</code></pre>
-    <p>Your sheet will appear immediately.</p>
+    <p>If your world maker hasn't set up automatic character creation, you'll need to create your sheet manually. Just type this anywhere in your adventure:</p>
+    <pre><code>/csms create YourName</code></pre>
+    <p>Replace <code>YourName</code> with your character's actual name. Your sheet will appear immediately.</p>
 
     <div class="tip-box">
-      <strong>Multiplayer:</strong> In adventures with Third Person mode enabled, your sheet is created automatically when you join. No command needed.
+      <strong>Tip:</strong> In multiplayer adventures with Third Person mode enabled, your sheet is created automatically when you join. No command needed.
     </div>
 
     <h2>Editing Your Stats</h2>
-    <p>Open the Story Cards panel, find your 📋 card, and edit it directly. Change any value you want — the script reads your changes on the next action automatically.</p>
-    <p>To force an immediate update after editing:</p>
-    <pre><code>/csms update/stats/YourName</code></pre>
+    <p>You can change any value on your sheet directly. Open the Story Cards panel, find your 📋 card, and click to edit it. Change any number you want, then just keep playing — the script will read your changes on the next action and update everything automatically.</p>
+
+    <div class="tip-box">
+      <strong>Want it to update right now?</strong> Type <code>/csms sync</code> after editing and your sheet will sync immediately.
+    </div>
 
     <div class="warning-box">
-      <strong>Warning:</strong> If you type something that isn't a valid number, the script rejects that value and keeps the old one. You'll see a notification explaining what was rejected.
-    </div>
-
-    <h2>Inventory</h2>
-    <p>Your inventory lives in the <strong>Notes field</strong> of your character sheet card — the description area below the stats. It looks like this:</p>
-    <pre><code>[Inventory]
-- leather jacket
-- burner phone
-- $200 cash
-- pocket knife
-- note "Meet at X at noon"
-- crumpled paper "The bigger is coming"</code></pre>
-
-    <p>Edit it freely — add items, remove them. Items with text on them use quoted format: <code>- note "Meet at X at noon"</code>. These are actual items, not annotations — the quoted text is part of the item name. When you're done, sync it:</p>
-    <pre><code>/csms update/inventory/YourName</code></pre>
-
-    <div class="tip-box">
-      <strong>Format rules:</strong> Each item gets its own <code>- item</code> line. Duplicate items are separate lines — no stacking. Items like notes or papers with text use quoted format: <code>- note "text here"</code>.
-    </div>
-
-    <h2>Rolling Dice</h2>
-    <p>When you want a mechanical outcome for an action, use the roll command:</p>
-    <pre><code>/csms roll/pick the lock</code></pre>
-    <pre><code>/csms roll/convince the guard to let you through</code></pre>
-
-    <p>CSMS asks the AI which stat fits best, rolls <code>1d20 + modifier</code>, and shows you the breakdown:</p>
-    <pre><code>[You initiated a roll: pick the lock
-1d20+DEX = [14] + DEX(+2) = 16]</code></pre>
-
-    <p>The result feeds into the AI's next response — so the story reflects what actually happened, not what the AI guessed.</p>
-
-    <div class="tip-box">
-      <strong>Tip:</strong> You can combine a roll with normal text. <code>You work carefully at the lock. /csms roll/pick the lock</code> — the AI sees your action, CSMS handles the roll.
-    </div>
-
-    <h2>Ordinances</h2>
-    <p>Ordinances are special behaviors written by the world maker that change how the world responds. Trigger one with:</p>
-    <pre><code>/csms ordinance/CallerName/OrdinanceName/TargetName</code></pre>
-
-    <p>For example — an Ordinance called <em>Quick Strike</em> against a Guard:</p>
-    <pre><code>/csms ordinance/Nikolai/Quick Strike/Borris</code></pre>
-
-    <p>CSMS handles the rest — determining if a roll is needed, rolling it, applying damage if the move lands, and letting the AI narrate based on what actually happened.</p>
-
-    <div class="tip-box">
-      <strong>What counts as an Ordinance?</strong> Ask your world maker. Ordinances can be combat moves, faction abilities, world laws, or anything else they've defined. Each one has a card in the Story Cards panel.
+      <strong>Warning:</strong> If you type something that isn't a valid number (like letters), the script will reject that value and keep the old one. It'll notify you in brackets at the top of the next AI response.
     </div>
 
     <h2>What the Stats Mean</h2>
+    <p>CSMS uses D&D 5e as its foundation, but your world maker may interpret these differently. In general:</p>
+
     <table class="cmd-table">
       <tr><th>Stat</th><th>What it affects</th></tr>
       <tr><td>STR</td><td>Physical power, melee attacks, carrying capacity</td></tr>
       <tr><td>DEX</td><td>Agility, ranged attacks, stealth, reflexes</td></tr>
       <tr><td>CON</td><td>Endurance, health, resistance to pain</td></tr>
-      <tr><td>INT</td><td>Knowledge, memory, reasoning</td></tr>
+      <tr><td>INT</td><td>Knowledge, memory, reasoning, magic (sometimes)</td></tr>
       <tr><td>WIS</td><td>Perception, intuition, willpower</td></tr>
       <tr><td>CHA</td><td>Persuasion, deception, social influence</td></tr>
       <tr><td>HP</td><td>How much damage you can take before going down</td></tr>
       <tr><td>AC</td><td>How hard you are to hit</td></tr>
     </table>
-    <p>The number in brackets after each stat (like <code>+2</code> or <code>-1</code>) is your modifier — this is what gets added to rolls.</p>
+
+    <p>The number in brackets after each stat (like <code>+2</code> or <code>-1</code>) is your modifier — this is what actually gets applied to rolls and checks.</p>
+
+    <h2>Advanced Systems</h2>
+    <p>Depending on which modules your world maker has enabled, your adventure may include additional mechanics. Each has its own dedicated guide:</p>
+
+    <div class="features-grid" style="margin-top: 1.5rem;">
+      <div class="feature-card">
+        <div class="feature-icon">🎒</div>
+        <h3>Inventory System</h3>
+        <p>Pick up, drop, give, and throw items using natural language commands. Your character sheet tracks everything automatically.</p>
+        <a href="inventory.html" style="color: var(--gold); font-family: var(--font-mono); font-size: 0.85rem;">Full Inventory Guide →</a>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚔️</div>
+        <h3>Ordinance System</h3>
+        <p>Execute named special abilities — combat techniques, signature moves, unique skills — with real mechanical consequences.</p>
+        <a href="ordinance.html" style="color: var(--gold); font-family: var(--font-mono); font-size: 0.85rem;">Full Ordinance Guide →</a>
+      </div>
+    </div>
 
     <h2>Notifications</h2>
-    <p>Sometimes you'll see a message in brackets at the top of an AI response:</p>
+    <p>Sometimes you'll see a message in brackets at the top of an AI response, like:</p>
     <pre><code>[!NOTIFICATION!
-You initiated a roll: pick the lock
-1d20+DEX = [14] + DEX(+2) = 16]</code></pre>
-    <p>This is CSMS talking to you. The AI ignores these brackets entirely — they're purely for you.</p>
+Your character sheet has been updated.]</code></pre>
+    <p>This is CSMS talking to you. The AI ignores these brackets — they're purely for you. You might see notifications when:</p>
+    <ul>
+      <li>Your character sheet is created or updated</li>
+      <li>A stat value you entered was invalid</li>
+      <li>A new character sheet was auto-generated</li>
+      <li>Something was synced or reset</li>
+    </ul>
 
     <h2>Commands Cheat Sheet</h2>
+    <p>You can type these anywhere in your adventure input:</p>
+
     <table class="cmd-table">
       <tr><th>Command</th><th>What it does</th></tr>
-      <tr><td>/csms create/[name]</td><td>Create a new character sheet</td></tr>
-      <tr><td>/csms stats</td><td>Refresh your character sheet</td></tr>
-      <tr><td>/csms stats/[name]</td><td>Refresh a specific character's sheet</td></tr>
-      <tr><td>/csms update/stats/[name]</td><td>Sync card stat edits to state</td></tr>
-      <tr><td>/csms update/inventory/[name]</td><td>Sync inventory edits to state</td></tr>
-      <tr><td>/csms roll/[action]</td><td>Roll dice for an action</td></tr>
-      <tr><td>/csms ordinance/[caller]/[name]/[target]</td><td>Trigger an Ordinance against a target</td></tr>
-      <tr><td>/csms reset/[name]</td><td>Remove a specific character sheet</td></tr>
-      <tr><td>/csms reset</td><td>Remove all character sheets</td></tr>
-      <tr><td>/csms cleanup</td><td>Remove orphaned story cards</td></tr>
+      <tr><td>/csms create [name]</td><td>Create a new character sheet</td></tr>
+      <tr><td>/csms stats</td><td>Refresh your character sheet display</td></tr>
+      <tr><td>/csms stats [name]</td><td>Refresh a specific character's sheet</td></tr>
+      <tr><td>/csms sync</td><td>Force sync your card edits right now</td></tr>
+      <tr><td>/csms sync [name]</td><td>Force sync a specific character's card</td></tr>
     </table>
+
+    <div class="tip-box">
+      <strong>Multiplayer note:</strong> In multiplayer, <code>/csms stats</code> and <code>/csms sync</code> with no name always affect <em>your</em> character — the one whose name matches your current input.
+    </div>
 
     <h2>Frequently Asked Questions</h2>
 
     <h3>My sheet disappeared. What do I do?</h3>
-    <p>Type <code>/csms stats</code> to refresh it. If it's truly gone, type <code>/csms create/YourName</code> to recreate it. Your stats will reset to defaults — edit them back manually.</p>
+    <p>Type <code>/csms stats</code> to refresh it. If it's truly gone, type <code>/csms create YourName</code> to recreate it. Your stats will reset to defaults, so you'll need to edit them back.</p>
 
     <h3>Can I set my stats to whatever I want?</h3>
-    <p>Yes — CSMS doesn't judge. The world maker may have set a maximum value (default is 50), but within that range you're free to set anything.</p>
+    <p>Yes — CSMS doesn't judge. The world maker may have set a maximum value (default is 50), but within that range, you're free to set anything. Whether the AI respects those stats in the story is up to the world maker's scenario design.</p>
 
     <h3>My stat edit isn't sticking. Why?</h3>
-    <p>Check that you entered a plain number — no letters or symbols. Also make sure the card structure is intact — the script reads values by position, so the format needs to stay consistent.</p>
+    <p>Check that you entered a plain number — no letters, symbols, or spaces. If you get a notification saying a value was rejected, the old value was kept. Also make sure the format of the card line wasn't broken — the script reads values by position, so the structure needs to stay intact.</p>
 
-    <h3>I see raw stat text appear in the story. Is that a bug?</h3>
+    <h3>I see "STR:10 DEX:10..." appear in the story text. Is that a bug?</h3>
     <p>This can happen if the tag system is generating a character sheet and something interrupted the process. It should only happen once and won't affect your story. Just keep playing.</p>
-
-    <h3>The AI isn't respecting my stats. What's wrong?</h3>
-    <p>Make sure you've run <code>/csms update/stats/YourName</code> after any edits. If the sheet looks correct but the AI still ignores it, the world maker may need to check their context injection settings.</p>
 
   </div>
 
@@ -184,6 +165,11 @@ You initiated a roll: pick the lock
             <a href="worldmaker.html">World Maker Guide</a>
             <a href="commands.html">Commands</a>
             <a href="changelog.html">Changelog</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Systems</div>
+            <a href="inventory.html">Inventory</a>
+            <a href="ordinance.html">Ordinance</a>
           </div>
           <div class="footer-col">
             <div class="footer-col-title">Project</div>
