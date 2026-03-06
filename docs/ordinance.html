@@ -163,7 +163,43 @@ Credit: CSMS — https://nikolaif90.github.io/AIDCharacterSheetandMechanicSystem
 
     <p>CSMS reads the AI's narrative, finds action words, and maps them to these tiers. The AI doesn't need to know the tiers exist — it writes naturally, and the script extracts meaning from what it wrote.</p>
 
+    <div class="tip-box">
+      <strong>Credit in the Notes field.</strong> The Notes field on a story card is visible to players during character creation but invisible to the AI — a clean place to put a credit line without affecting how the Ordinance performs.
+    </div>
+
     <h2>Frequently Asked Questions</h2>
+
+    <h3>The AI seems to ignore my Ordinance. What's happening?</h3>
+    <p>This happens occasionally and depends heavily on the model you're using. Some models follow story card instructions more reliably than others. If it happens, don't panic — clear the last AI output and your input, then retype the command and try again. Sometimes the model just needs another shot at it.</p>
+
+    <h3>What AI models work best with Ordinances?</h3>
+    <p>The system has been fully tested with <strong>Harbinger (24B)</strong> — a model tuned specifically for high stakes, meaningful choices, and harsh consequences. Harbinger doesn't care if you're the protagonist. It raises the stakes and makes every decision count, which pairs extremely well with the Ordinance system's mechanical weight.</p>
+    <p><strong>Wayfarer Small 2 (12B)</strong> is also a strong candidate — focused entirely on combat, injury, and high stakes consequences. Untested with CSMS directly, but the design philosophy aligns well. Wayfarer Large shares the same focus and is similarly promising but untested.</p>
+
+    <h3>Are there models that won't work?</h3>
+    <p>A few categories to be cautious with:</p>
+    <ul>
+      <li><strong>Rotating test models</strong> — Dynamic Small and similar unstable models are unpredictable. Not recommended.</li>
+      <li><strong>Slice of life models</strong> — Models not designed for conflict or action may refuse to narrate violence or simply ignore combat mechanics entirely. Hermes 3 70B is one example.</li>
+      <li><strong>Caching models</strong> — Raven (357B/32B) and Atlas (671B/37B) are untested. It's unclear whether caching models work with CSMS at all. Proceed with caution and expect surprises.</li>
+    </ul>
+
+    <h3>Where can I find Ordinances to use in my scenario?</h3>
+    <p>Honestly — there's no central library yet. Someone may open a thread on the AI Dungeon Discord, or one may appear in the future. In the meantime, feel free to reach out directly on Discord: <strong>princef90</strong>.</p>
+
+    <h3>My Ordinance failed. What do I do?</h3>
+    <p>Depends on the type of failure:</p>
+    <ul>
+      <li><strong>Low roll result</strong> — that's narrative. Accept it, or clear the last output and input and try again.</li>
+      <li><strong>AI narrated something off</strong> — rewrite your Ordinance entry. Shorter and more precise usually fixes it.</li>
+      <li><strong>AI ignored it entirely</strong> — clear the last output and input, retype the command, try again. Models sometimes need a second attempt.</li>
+    </ul>
+
+    <h3>I cleared the output but the Ordinance is still running through its steps.</h3>
+    <p>This is normal. The system uses a multi-step method to execute Ordinances — it tracks which step it's currently on. If you delete or edit the last AI output mid-process, the script doesn't know that happened. You need to let the full sequence complete before clearing. If you're stuck mid-step, just continue through to the end, then clear from there.</p>
+
+    <h3>Do I need to assign every Ordinance to my character?</h3>
+    <p>Only if your world maker has set it up that way. If your <code>[Ordinances]</code> block is empty (just a dash), you can use any Ordinance in the scenario. If it has entries, only those listed are available to you.</p>
 
     <h3>Do I need a target?</h3>
     <p>Only for damaging Ordinances. Non-damaging Ordinances like buffs or focus techniques don't need a target — just omit the last argument:</p>
@@ -171,9 +207,6 @@ Credit: CSMS — https://nikolaif90.github.io/AIDCharacterSheetandMechanicSystem
 
     <h3>Can multiple characters have the same Ordinance?</h3>
     <p>Yes. The Ordinance card exists once in the scenario — any character with it listed in their <code>[Ordinances]</code> block can use it.</p>
-
-    <h3>What if my Ordinance isn't on my sheet?</h3>
-    <p>The attempt fails before the AI sees it. The input is replaced with natural failure prose — the AI narrates the moment as an unsuccessful attempt. Nothing breaks.</p>
 
     <h3>Can the caller take damage too?</h3>
     <p>Yes. If the AI's narrative describes a counter-attack or the caller getting hit, CSMS detects it and applies damage to the caller as well. The script reads what actually happened — not what you intended.</p>
