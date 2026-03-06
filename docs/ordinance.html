@@ -101,54 +101,51 @@ Sarah closes her eyes, focusing. /csms ordinance/Sarah/Unwavering Focus
     <p><strong>Low roll.</strong> If the dice come up poorly, the Ordinance still fires — but the AI's narrative will reflect a weak or failed execution, and damage is applied accordingly (possibly to the caller instead of the target).</p>
 
     <h2>For World Makers — Creating an Ordinance Card</h2>
-    <p>An Ordinance lives in a Story Card. The card title becomes the Ordinance name. Here is the full structure:</p>
+    <p>An Ordinance lives in a Story Card. Here is exactly how to set one up:</p>
 
-    <h3>Card Title</h3>
-    <pre><code>Quick Strike</code></pre>
-    <p>This is exactly what players type in the command. Keep it clear, memorable, and unique.</p>
+    <h3>Step 1 — Set the Card Type</h3>
+    <p>When creating the card, set <strong>Type</strong> to <code>Custom</code>. A new empty field will appear below it — type <code>Ordinance</code> there. This is how CSMS identifies the card as an Ordinance. Without this, the command won't find it.</p>
 
-    <h3>Card Keys (Triggers)</h3>
-    <pre><code>Quick Strike, csms_ord</code></pre>
-    <p>Always include <code>csms_ord</code> as a key — this is how CSMS identifies Ordinance cards. Add the Ordinance name too so it triggers in relevant story context.</p>
-
-    <h3>Card Entry Field</h3>
-    <p>This is the mechanical definition the AI reads when the Ordinance fires. Be specific — the AI uses this to determine roll notation, damage type, and narrative direction.</p>
-    <pre><code>Ordinance: Quick Strike
-Type: Damaging | Melee
-Roll: 2d6
-Description: A fast, precise strike aimed at vital points. Prioritizes speed over power — difficult to block, easy to chain into follow-up moves.
-On hit: Target staggers or recoils. Caller maintains momentum.
-On miss: Caller overextends slightly, leaving a brief opening.</code></pre>
-
-    <div class="tip-box">
-      <strong>The entry field is your contract with the AI.</strong> The more clearly you define the Ordinance — its type, its roll, its narrative flavor — the more consistently the AI will execute it. Vague entries produce inconsistent results.
+    <div class="warning-box">
+      <strong>Type must be exactly "Ordinance".</strong> Capitalization doesn't matter, but spelling does. If CSMS can't find any Ordinance cards, it will tell you to check this field.
     </div>
 
-    <h3>Non-Damaging Ordinances</h3>
-    <p>Not every Ordinance needs to deal damage. Focus techniques, buffs, debuffs, and support moves work too:</p>
-    <pre><code>Ordinance: Unwavering Focus
-Type: Non-Damaging | Self
-Roll: 1d20
-Description: The character clears their mind and sharpens their perception. No direct damage — but the narrative should reflect heightened awareness, steadied breathing, and readiness for the next action.
-Effect: No HP change. AI describes the mental/physical shift.</code></pre>
+    <h3>Step 2 — Name the Card</h3>
+    <pre><code>Quick Strike</code></pre>
+    <p>This is exactly what players type in the command. Keep it clear, memorable, and unique. The match is case insensitive — <code>quick strike</code> and <code>Quick Strike</code> both work.</p>
 
-    <h3>Full Example Card</h3>
-    <table class="cmd-table">
-      <tr><th>Field</th><th>Value</th></tr>
-      <tr><td>Title</td><td><code>Flashing Shadow</code></td></tr>
-      <tr><td>Keys</td><td><code>Flashing Shadow, csms_ord</code></td></tr>
-      <tr><td>Entry</td><td>See below</td></tr>
-    </table>
+    <h3>Step 3 — Write the Entry Field</h3>
+    <p>This is what the AI reads when the Ordinance fires. You don't need to include roll notation, damage type, or DAMAGING/NONDAMAGING labels — the AI already understands from the description. Keep it short and precise:</p>
+
+    <pre><code>A lightning-fast strike delivered before the opponent can react. Prioritizes speed over power.</code></pre>
+
+    <p>That's enough. The AI knows it's an attack. It knows how to narrate it. More detail is fine — but only if it helps the AI understand something it wouldn't otherwise:</p>
+
     <pre><code>Ordinance: Flashing Shadow
-Type: Damaging | Melee
-Roll: 3d6
-Description: An explosive burst of movement — the character closes distance in an instant and delivers a concentrated strike before the target can react. High risk, high reward.
-On hit: Target is sent reeling. Significant momentum shift.
-On miss: Caller is exposed and off-balance. Counter-attack likely.
-Credit: CSMS Ordinance System — https://nikolaif90.github.io/AIDCharacterSheetandMechanicSystem/</code></pre>
+A burst of explosive movement closing distance instantly. High risk — if it misses, the caller is left exposed.
+Roll: 3d6</code></pre>
 
     <div class="tip-box">
-      <strong>Consider adding a credit line.</strong> The Ordinance system took significant time to build. If you publish a scenario using it, a link back to the CSMS website in your Ordinance cards helps other world makers and players discover it. It's never required — but always appreciated. 🙏
+      <strong>Less is often more.</strong> Most AI models respond better to short, precise instructions than long detailed ones. Write what's unique about the Ordinance — not everything that could happen. And remember: results depend on the AI model. Some follow instructions more reliably than others.
+    </div>
+
+    <h3>Step 4 — Add Triggers</h3>
+    <p>Triggers are keywords that bring the card into AI context when mentioned in the story. Add the Ordinance name at minimum:</p>
+    <pre><code>Quick Strike</code></pre>
+
+    <h3>Full Example</h3>
+    <table class="cmd-table">
+      <tr><th>Field</th><th>Value</th></tr>
+      <tr><td>Type</td><td>Custom → <code>Ordinance</code></td></tr>
+      <tr><td>Name</td><td><code>Flashing Shadow</code></td></tr>
+      <tr><td>Triggers</td><td><code>Flashing Shadow</code></td></tr>
+      <tr><td>Entry</td><td>See below</td></tr>
+    </table>
+    <pre><code>An explosive burst of movement — closes distance instantly and delivers a concentrated strike before the target can react. High risk, high reward. If it misses, the caller is left exposed and vulnerable.
+Credit: CSMS — https://nikolaif90.github.io/AIDCharacterSheetandMechanicSystem/</code></pre>
+
+    <div class="tip-box">
+      <strong>Consider adding a credit line.</strong> The Ordinance system took significant time to build. If you publish a scenario using it, a link back to the CSMS website in your Ordinance cards helps other world makers and players discover it. Never required — always appreciated. 🙏
     </div>
 
     <h2>Damage Tiers</h2>
