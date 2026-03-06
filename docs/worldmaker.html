@@ -29,47 +29,11 @@
     <div class="container">
       <div class="section-tag">Documentation</div>
       <h1>World Maker Guide</h1>
-      <p>Set up CSMS in your scenario and give your world actual mechanical weight.</p>
+      <p>Set up CSMS in your scenario and give your players a proper mechanical foundation.</p>
     </div>
   </div>
 
   <div class="content-body">
-
-    <h2>Configuration Card</h2>
-    <p>CSMS automatically creates a <code>⚙️ CSMS CFG</code> story card on first run. This is your live configuration panel — no script editing needed. Edit the Notes field of the card at any time and changes take effect on the next action.</p>
-
-    <div class="tip-box">
-      <strong>Same-action edits work.</strong> Edit the CFG card and run a command in the same action — CSMS reads the card before executing the command. No need for a separate action to apply changes.
-    </div>
-
-    <h3>How to edit</h3>
-    <p>Open the <code>⚙️ CSMS CFG</code> story card and edit the Notes field. Each setting is on its own line in <code>KEY: value</code> format. For features use <code>true</code> or <code>false</code>. For numbers use integers only. For dice keep the <code>XdY</code> format where X is the number of dice and Y is the number of sides.</p>
-
-    <h3>Copy-paste template</h3>
-    <p>The card is created automatically with defaults, but if you ever need to recreate it — copy this into the Notes field:</p>
-
-    <pre><code>MODULE_CHARACTER_SHEETS: true
-MODULE_COMBAT: true
-MODULE_ORDINANCE: true
-MODULE_INVENTORY: true
-DEBUG_MODE: false
-STAT_MAX: 50
-STAT_MIN: 1
-AVERAGE_STAT: 10
-DEFAULT_STAT: 10
-DEFAULT_HP: 10
-DEFAULT_AC: 10
-DEFAULT_SPEED: 30
-DAMAGE_DIE: 6
-LOOKBACK_ACTIONS: 5
-INJECTED_SHEET_MAX: 20
-ORD_PROXIMITY: 50
-ORD_DEFAULT_ROLL: 1d20
-ORD_ND_DAMAGE_DETECTION: false</code></pre>
-
-    <div class="warning-box">
-      <strong>Don't edit the Entry field.</strong> The Entry field is informational only. All configuration lives in the Notes field below it.
-    </div>
 
     <h2>Installation</h2>
     <p>CSMS lives entirely in your scenario's script tabs. There are no external dependencies and nothing to install.</p>
@@ -94,7 +58,7 @@ const modifier = (text) => { return { text } };
 modifier(text)</code></pre>
 
     <div class="tip-box">
-      <strong>Using other scripts too?</strong> Place <code>CSMS("input")</code> before your other script calls. Same for context and output. CSMS namespaces everything and is designed to coexist without conflicts.
+      <strong>Using other scripts too?</strong> Place <code>CSMS("input")</code> before your other script calls. Same for context and output. CSMS is designed to coexist with Inner Self, Auto-Cards, and others.
     </div>
 
     <h2>Configuration</h2>
@@ -102,41 +66,26 @@ modifier(text)</code></pre>
 
     <pre><code>const CSMS_CONFIG =
 {
-  MODULES:
-  {
-    CHARACTER_SHEETS: true,   // stat sheets + tag system + context injection
-    COMBAT: true,             // HP tracking, damage application
-    ORDINANCE: true,          // the whole point
-    INVENTORY: true,          // item tracking per character
-  },
-
   STAT_MAX: 50,               // Max value for any stat
   STAT_MIN: 1,                // Min value for any stat
-  AVERAGE_STAT: 10,           // Modifier calculation baseline
-  DEFAULT_STAT: 10,           // Starting stat value on creation
-  DEFAULT_HP: 10,
-  DEFAULT_AC: 10,
-  DEFAULT_SPEED: 30,
-
   LOOKBACK_ACTIONS: 5,        // How many actions back to scan for character names
   INJECTED_SHEET_MAX: 20,     // Max sheets injected into AI context per action
-
-  AUTO_GENERATION_TAG: "[CSMS]",
-  BANNED_NAMES: ["you", "adventurer"],
+  BANNED_NAMES: ["you", "adventurer"],  // Names not allowed
+  AUTO_GENERATION_TAG: "[CSMS]",        // Tag for auto sheet generation
 }
 
 const NOTIFY_CONFIG =
 {
-  NOTIFICATION_HEADER: "!NOTIFICATION!",
-  DEBUG_MODE: false
+  NOTIFICATION_HEADER: "!NOTIFICATION!",  // Header text in brackets
+  DEBUG_MODE: false                        // Set true while testing
 }</code></pre>
 
     <div class="tip-box">
-      <strong>Always set <code>DEBUG_MODE: false</code> before publishing.</strong> Debug mode floods the script logs with timestamps on every action — useful while testing, disruptive for players.
+      <strong>Always set <code>DEBUG_MODE: false</code> before publishing.</strong> Debug mode floods the script logs with timestamps on every action — useful for you, annoying for players.
     </div>
 
     <h2>The Tag System</h2>
-    <p>Instead of manually assigning stats, let the AI read your character descriptions and determine appropriate values automatically.</p>
+    <p>This is CSMS's most powerful feature for world makers. Instead of manually assigning stats, you let the AI read your character descriptions and determine appropriate values automatically.</p>
 
     <h3>How to use it</h3>
     <p>Add <code>[CSMS]</code> to the beginning of any story card title:</p>
@@ -149,139 +98,69 @@ Entry:  Mira is a battle-hardened mercenary with fifteen years
         is lean and scarred. She's seen enough death to be
         completely unshakeable under pressure.</code></pre>
 
-    <p>When <em>Mira</em> appears in the story, CSMS reads your card entry, asks the AI to determine appropriate stats, creates a <code>📋 Mira</code> character sheet, and removes the <code>[CSMS]</code> tag from your original card. Your original card stays intact. The sheet is separate.</p>
+    <p>When <em>Mira</em> appears in the story, CSMS will:</p>
+    <ul>
+      <li>Read your card entry</li>
+      <li>Ask the AI to determine appropriate D&D 5e stats</li>
+      <li>Create a proper <code>📋 Mira</code> character sheet</li>
+      <li>Remove the <code>[CSMS]</code> tag from your original card</li>
+    </ul>
+
+    <p>Your original card stays intact. The sheet is separate.</p>
 
     <div class="tip-box">
       <strong>Write rich descriptions.</strong> The better your entry, the more accurate the AI's stat choices. Mention physical traits, personality, skills, and history. "Fast and agile" → high DEX. "Unshakeable under pressure" → high WIS. The AI reads it all.
     </div>
 
-    <h3>Works with auto-generated cards</h3>
-    <p>If you use an automatic card generation script, CSMS can tag those cards too. Once a card is created for a character, add <code>[CSMS]</code> to the title and CSMS handles the rest.</p>
+    <h3>Works with Auto-Cards</h3>
+    <p>If you use LewdLeah's Auto-Cards, you can tag AC-generated cards too. Once AC creates a card for a character, just add <code>[CSMS]</code> to the title and CSMS will handle the rest.</p>
 
     <h3>Processing order</h3>
-    <p>If multiple characters need sheets at the same time, CSMS processes one per action. This is intentional — the AI needs to respond with stats before the next character can be processed. A party of 5 unknown characters takes 5 consecutive actions to fully generate. This only happens once per character.</p>
-
-    <h2>Ordinances</h2>
-    <p>Ordinances are what decide how your world responds. Write one as a story card in plain language — and when triggered, the outcome isn't just narrated. It's executed. Rolls happen. Damage applies. Stats update.</p>
-
-    <h3>Writing an Ordinance card</h3>
-    <p>Create a story card. The title is the Ordinance name. The entry is the behavior — written like you're explaining a rule to the AI.</p>
-
-    <pre><code>Title:  Quick Strike
-Entry:  The character dashes forward and strikes the target
-        before they can react. This is a damaging move.
-        Success deals full weapon damage.
-        Failure leaves the attacker exposed.</code></pre>
-
-    <pre><code>Title:  Counter Strike
-Entry:  When this character loses a roll, they may still deal
-        half damage to the opponent.
-        Damage = half of opponent's damage roll, rounded down.</code></pre>
-
-    <pre><code>Title:  Tactical Reinforcement
-Entry:  When engaged in combat, the caller may request
-        reinforcements once per combat.
-        Allies arriving = XdY + X, where X depends on territory:
-        1 (hostile), 2 (neutral), 3 (allied).
-        Y = 2 × caller's Wisdom modifier.
-        Caller must belong to a faction.</code></pre>
-
-    <h3>How execution works</h3>
-    <p>When a player triggers an Ordinance, CSMS runs a multi-step flow — taking as many actions as needed to execute correctly. Executing wrong in one action is worse than executing right in three.</p>
-    <ul>
-      <li>Script finds the card, feeds the entry and target context to AI</li>
-      <li>AI judges whether this is a damaging or non-damaging Ordinance</li>
-      <li>Damaging — a roll happens first. Success triggers damage. Failure is narrated only.</li>
-      <li>Non-damaging — AI judges if a roll is needed. If yes, rolls and narrates. If no, narrates directly.</li>
-    </ul>
-
-    <p>No free damage. Every Ordinance that could hurt something goes through a roll first — even if the card doesn't explicitly say so.</p>
-
-    <div class="tip-box">
-      <strong>Write clearly, write precisely.</strong> The script's contract: if the damage formula is valid, it gets calculated. If the numbers are wrong — that's on the Ordinance writer. The AI interprets your entry. The quality of that interpretation depends on how well you wrote it.
-    </div>
-
-    <div class="warning-box">
-      <strong>Ordinances are not god moves.</strong> They are injected behaviors that work with the existing dice and combat system — not around it. Write conditions, not guarantees.
-    </div>
-
-    <h3>Ordinances as world laws</h3>
-    <p>Ordinances aren't limited to character abilities. A creative world maker can use them to define how the world itself behaves — faction laws, environmental rules, social consequences. If you can write the condition in plain language, CSMS can enforce it.</p>
-
-    <pre><code>Title:  Law of the Streets
-Entry:  In this city, no one helps strangers for free.
-        Any character attempting an unprompted act of charity
-        must pass a CHA check or the recipient demands payment.</code></pre>
-
-    <pre><code>Title:  Unwavering Focus
-Entry:  When executed, the user clears all debuffs and enters
-        a heightened state of focus.
-        Grants a temporary speed and dexterity bonus.
-        This is a non-damaging, self-targeted move.</code></pre>
-
-    <h3>Triggering an Ordinance</h3>
-    <p>Players trigger Ordinances with:</p>
-    <pre><code>/csms ordinance/CallerName/OrdinanceName/TargetName</code></pre>
-    <p>Caller is who triggers the Ordinance. Ordinance name must match the story card title exactly. Target is who or what the Ordinance is aimed at. Target is optional for non-combat Ordinances.</p>
-
-    <h2>Inventory</h2>
-    <p>Each character's inventory lives in the <strong>Notes field</strong> of their sheet card — the description area below the stats. No separate card needed, no character limit.</p>
-
-    <h3>Format</h3>
-    <pre><code>[Inventory]
-- leather jacket
-- burner phone
-- $200 cash
-- pocket knife
-- note "Meet at X at noon"
-- crumpled paper "The bigger is coming"</code></pre>
-
-    <p>Each item gets its own <code>- item</code> line. Duplicate items are separate lines — no stacking. Items with text on them use quoted format — <code>- note "Meet at X at noon"</code>. These are actual items, not annotations. The quoted text is part of the item name. Script reads the full string as one item, AI reads and understands the content.</p>
-
-    <h3>Syncing inventory</h3>
-    <p>After editing an inventory card, the player runs:</p>
-    <pre><code>/csms update/inventory/CharacterName</code></pre>
-    <p>This reads the Notes field and syncs the item list to state. If a player forgets to run this after editing — that's on them. Document it in your scenario.</p>
+    <p>If multiple characters need sheets generated at the same time, CSMS processes one per action. This is intentional — the AI needs to respond with stats before the next character can be processed. A party of 5 unknown characters takes 5 consecutive actions to fully generate. This only happens once per character.</p>
 
     <h2>Multiplayer Setup</h2>
-    <p>CSMS handles multiplayer automatically with no extra configuration.</p>
+    <p>CSMS handles multiplayer automatically with no extra configuration. When players join, their sheets are created immediately.</p>
 
     <h3>Required: Third Person plot component</h3>
-    <p>Add the <strong>Third Person</strong> plot component to your scenario. This switches player input from <code>&gt; You</code> to <code>&gt; PlayerName</code>, which allows CSMS to detect which player is acting. Without it, all players appear as "You" and CSMS can't tell them apart.</p>
+    <p>For multiplayer to work correctly, add the <strong>Third Person</strong> plot component to your scenario. This switches player input from <code>&gt; You</code> to <code>&gt; PlayerName</code>, which allows CSMS to detect which player is acting.</p>
+
+    <p>Without Third Person, all players appear as "You" and CSMS can't tell them apart.</p>
 
     <h3>What happens automatically</h3>
     <ul>
       <li>Sheet created when player joins</li>
       <li>Sheet removed and recreated if player renames mid-session</li>
-      <li>Commands with no name always affect the active player</li>
+      <li><code>/csms stats</code> and <code>/csms sync</code> with no name always affect the active player</li>
       <li>Names in your <code>BANNED_NAMES</code> config are silently skipped</li>
     </ul>
 
     <div class="warning-box">
-      <strong>Remind players to set their name.</strong> All players default to "You" when joining. They need to set their name in the game menu before their sheet can be created. "You" is in the banned names list by default.
+      <strong>Remind players to set their name.</strong> All players default to "You" when joining. They need to click their name in the game menu and set it before their sheet can be created. "You" is in the banned names list by default.
     </div>
 
     <h2>Stat Ranges</h2>
-    <p>By default, stats can be set between 1 and 50. This is wider than classic D&D to give world makers more flexibility. A godlike character at 50 STR behaves very differently from a peak human at 20. Adjust <code>STAT_MIN</code> and <code>STAT_MAX</code> in <code>CSMS_CONFIG</code> to fit your scenario's power level.</p>
+    <p>By default, stats can be set between 1 and 50. This is intentionally wider than classic D&D (where 20 is the typical cap) to give world makers more flexibility. A godlike character at 50 STR behaves very differently from a peak human at 20.</p>
+    <p>Adjust <code>STAT_MIN</code> and <code>STAT_MAX</code> in <code>CSMS_CONFIG</code> to fit your scenario's power level.</p>
 
     <h2>AI Context Injection</h2>
-    <p>On every action, CSMS injects a compact summary of relevant character stats directly into what the AI sees — invisible to players:</p>
-    <pre><code>[CSMS|Kira|HP:18/20|AC:15|STR:15|DEX:12|CON:14|INT:10|WIS:11|CHA:13]
+    <p>On every action, CSMS injects a compact summary of relevant character stats directly into what the AI sees. It looks like this (invisible to players):</p>
+    <pre><code>[CSMS|Nikolai|HP:18/20|AC:15|STR:15|DEX:12|CON:14|INT:10|WIS:11|CHA:13]
 [CSMS|Mira|HP:10/10|AC:12|STR:12|DEX:18|CON:13|INT:10|WIS:16|CHA:9]</code></pre>
 
     <p>Only characters mentioned in the last <code>LOOKBACK_ACTIONS</code> actions are injected, plus the player character always. This keeps token usage efficient even with large casts.</p>
 
     <h2>Banned Names</h2>
-    <p>The <code>BANNED_NAMES</code> list prevents certain names from triggering character creation. Defaults are <code>"you"</code> and <code>"adventurer"</code>. Add any names that would conflict with your scenario:</p>
+    <p>The <code>BANNED_NAMES</code> list prevents certain names from being used as character names. Default banned names are <code>"you"</code> and <code>"adventurer"</code>.</p>
+    <p>Add any names that would conflict with your scenario:</p>
     <pre><code>BANNED_NAMES: ["you", "adventurer", "narrator", "gm"],</code></pre>
 
     <h2>Compatibility Notes</h2>
 
-    <h3>Inner Self</h3>
-    <p>Fully compatible. Same architecture pattern. Run both in the same script tabs — CSMS first, then Inner Self.</p>
+    <h3>Inner Self (LewdLeah)</h3>
+    <p>Fully compatible. CSMS uses the same architecture pattern as Inner Self. Run them in the same script tabs — CSMS first, then IS.</p>
 
-    <h3>Auto-Cards</h3>
-    <p>Compatible. CSMS card keys use the <code>csms_cs_</code> prefix to avoid keyword conflicts. The tag system is designed to work alongside auto-generated cards.</p>
+    <h3>Auto-Cards (LewdLeah)</h3>
+    <p>Compatible. CSMS card keys use the <code>csms_cs_</code> prefix to avoid keyword conflicts with AC. The tag system is designed to work alongside AC-generated cards.</p>
 
     <h3>Other scripts</h3>
     <p>CSMS namespaces everything under <code>state.characters</code> and <code>state.notifyMessages</code>. As long as other scripts don't use those same state keys, there should be no conflict.</p>
@@ -303,6 +182,11 @@ Entry:  When executed, the user clears all debuffs and enters
             <a href="worldmaker.html">World Maker Guide</a>
             <a href="commands.html">Commands</a>
             <a href="changelog.html">Changelog</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Systems</div>
+            <a href="inventory.html">Inventory</a>
+            <a href="ordinance.html">Ordinance</a>
           </div>
           <div class="footer-col">
             <div class="footer-col-title">Project</div>
