@@ -7,127 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <style>
-    .ordinance-demo { background: var(--bg-card); }
-    .ordinance-demo h2 { margin-bottom: 1rem; }
-    .ordinance-demo > .container > p { max-width: 640px; font-size: 1.1rem; margin-bottom: 3rem; }
-
-    .demo-flow {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2rem;
-      align-items: start;
-    }
-
-    .demo-card {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-    }
-
-    .demo-card-header {
-      padding: 0.75rem 1.2rem;
-      border-bottom: 1px solid var(--border);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      background: var(--bg-raised);
-    }
-
-    .demo-card-body { padding: 1.5rem; }
-
-    .demo-card-title {
-      font-family: 'Cinzel', serif;
-      font-size: 0.85rem;
-      color: var(--gold);
-      margin-bottom: 0.75rem;
-    }
-
-    .demo-card-body p {
-      font-size: 0.9rem;
-      line-height: 1.7;
-      color: var(--text-dim);
-      margin: 0;
-    }
-
-    .demo-arrow {
-      display: flex;
-      flex-direction: column;
-      gap: 1.2rem;
-      padding: 0.5rem 0;
-    }
-
-    .demo-step {
-      display: flex;
-      gap: 1rem;
-      align-items: flex-start;
-    }
-
-    .demo-step-icon {
-      flex: 0 0 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--gold-glow);
-      border: 1px solid var(--gold-dim);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--gold);
-      margin-top: 2px;
-    }
-
-    .demo-step-text { font-size: 0.95rem; color: var(--text-dim); line-height: 1.5; }
-    .demo-step-text strong { color: var(--text); }
-    .demo-step-text em { color: var(--gold); font-style: normal; }
-
-    .demo-trigger {
-      margin-top: 1.5rem;
-      padding: 1rem 1.5rem;
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--gold-dim);
-      border-radius: var(--radius);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--gold);
-    }
-
-    .demo-trigger-label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      margin-bottom: 0.4rem;
-    }
-
-    .for-who { background: var(--bg); }
-    .for-who h2 { margin-bottom: 3rem; }
-
-    .for-who-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.5rem;
-    }
-
-    .for-who-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 2rem;
-    }
-
-    .for-who-card h3 { font-size: 1rem; color: var(--gold); margin-bottom: 0.75rem; }
-    .for-who-card p { font-size: 0.95rem; margin: 0; }
-
-    @media (max-width: 768px) {
-      .demo-flow { grid-template-columns: 1fr; }
-    }
-  </style>
 </head>
 <body>
 
@@ -156,9 +35,9 @@
     </div>
     <div class="hero-content">
       <div class="hero-tag">AI Dungeon Scripting System</div>
-      <h1>Your rules.<br><em>Actually enforced.</em></h1>
-      <p class="hero-sub">Write a rule in plain language.<br>Watch it execute — logically, mechanically, every time.</p>
-      <div class="hero-version">v1.5.2 — Phase 5 Complete</div>
+      <h1>Character Sheet &amp;<br><em>Mechanics System</em></h1>
+      <p class="hero-sub">The AI handles judgment.<br>The script handles consistency.</p>
+      <div class="hero-version">v1.9.0 — Inventory System</div>
       <div class="hero-actions">
         <a href="worldmaker.html" class="btn-primary">Get Started</a>
         <a href="player.html" class="btn-secondary">I'm a Player</a>
@@ -166,167 +45,99 @@
     </div>
     <div class="hero-card-preview">
       <div class="card-mock">
-        <div class="card-mock-title">⚔ Counter Strike</div>
-        <div class="card-mock-line" style="color: var(--text-dim); font-size: 0.82rem; line-height: 1.6;">When this character loses a roll, they may still deal half damage to the opponent.</div>
-        <div class="card-mock-blank"></div>
-        <div class="card-mock-line" style="color: var(--text-muted); font-size: 0.75rem;">— Ordinance Card —</div>
-        <div class="card-mock-blank"></div>
-        <div class="card-mock-line">Roll: Nikolai 6 vs Guard 15 → Loss</div>
-        <div class="card-mock-line">Counter Strike triggered ↓</div>
-        <div class="card-mock-line">Half dmg: 1d6=[4] → 2 applied</div>
-        <div class="card-mock-line" style="color: var(--gold);">Guard HP: 18 → 16 ✓</div>
+        <div class="card-mock-title">📋 Nikolai</div>
+        <div class="card-mock-line">Name: Nikolai | Level: 3 | XP: 450</div>
+        <div class="card-mock-line">HP: 18/20 | AC: 15 | Speed: 30ft</div>
+        <div class="card-mock-line">Proficiency: +2</div>
+        <div class="card-mock-line card-mock-blank"></div>
+        <div class="card-mock-line">STR: 15 (+2)  DEX: 12 (+1)  CON: 14 (+2)</div>
+        <div class="card-mock-line">INT: 10 (+0)  WIS: 11 (+0)  CHA: 13 (+1)</div>
       </div>
     </div>
   </header>
 
-  <!-- ORDINANCE SECTION -->
-  <section class="ordinance-demo">
-    <div class="container">
-      <div class="section-tag">Ordinance System</div>
-      <h2>Rules that actually<br><em>do something.</em></h2>
-      <p>An Ordinance is what decides how the world responds. Write one in plain language on a story card — and the outcome isn't just narrated. It's <em>executed</em>. Stats update. Damage applies. The story reflects what actually happened.</p>
-
-      <div class="demo-flow">
-        <div>
-          <div class="demo-card">
-            <div class="demo-card-header">Ordinance Card — written by world maker</div>
-            <div class="demo-card-body">
-              <div class="demo-card-title">Quick Strike</div>
-              <p>The character dashes forward and strikes the target before they can react. This is a damaging move. Success deals full weapon damage. Failure leaves the attacker exposed.</p>
-            </div>
-          </div>
-          <div class="demo-trigger">
-            <div class="demo-trigger-label">Player triggers it</div>
-            /csms ordinance/Quick Strike/Guard
-          </div>
-        </div>
-
-        <div class="demo-arrow">
-          <div class="demo-step">
-            <div class="demo-step-icon">1</div>
-            <div class="demo-step-text"><strong>Script</strong> finds the Ordinance card, feeds the entry to AI as context.</div>
-          </div>
-          <div class="demo-step">
-            <div class="demo-step-icon">2</div>
-            <div class="demo-step-text"><strong>AI judges</strong> — this is a damaging move. A roll is required first.</div>
-          </div>
-          <div class="demo-step">
-            <div class="demo-step-icon">3</div>
-            <div class="demo-step-text"><strong>Script rolls</strong> — <em>1d20+STR = [16]+2 = 18.</em> Success.</div>
-          </div>
-          <div class="demo-step">
-            <div class="demo-step-icon">4</div>
-            <div class="demo-step-text"><strong>AI determines</strong> damage formula. Script calculates, applies to target HP.</div>
-          </div>
-          <div class="demo-step">
-            <div class="demo-step-icon">5</div>
-            <div class="demo-step-text"><strong>AI narrates</strong> the outcome — informed by a real result, not a guess.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- PHILOSOPHY -->
   <section class="philosophy">
     <div class="container">
       <div class="section-tag">Philosophy</div>
-      <h2>Three jobs.<br>Three owners.</h2>
-      <p>Most mechanics systems either fight the AI — hardcoding outcomes the story should decide — or do too little, leaving everything to narrative luck. CSMS draws a clear line between three responsibilities and makes sure each one stays in the right hands.</p>
-
-      <div class="compare-grid" style="margin-top: 3rem;">
+      <h2>Not a rules engine.<br>A narrative foundation.</h2>
+      <p>Most stat systems for AI Dungeon try to simulate a TTRPG. They tell the AI what to do, hardcode outcomes, and fight against the AI's creativity.</p>
+      <p>CSMS takes the opposite approach. It gives the AI <em>just enough</em> mechanical context to make decisions feel earned — and then gets out of the way.</p>
+      <div class="compare-grid">
         <div class="compare-col compare-bad">
-          <div class="compare-label" style="color: var(--gold);">Player</div>
-          <p style="font-size: 0.95rem; color: var(--text-dim); padding-left: 0;">Decides <strong>when</strong> mechanics apply. Invokes rolls. Triggers Ordinances. Agency stays with the person playing the story.</p>
+          <div class="compare-label">Other systems</div>
+          <ul>
+            <li>Script decides outcomes</li>
+            <li>Hardcoded rules</li>
+            <li>Player vs numbers</li>
+            <li>Combat focused</li>
+            <li>Single character only</li>
+            <li>Fixed ruleset</li>
+          </ul>
         </div>
-        <div class="compare-divider">+</div>
-        <div class="compare-col" style="background: var(--bg-raised);">
-          <div class="compare-label" style="color: var(--gold);">AI</div>
-          <p style="font-size: 0.95rem; color: var(--text-dim); padding-left: 0;">Decides <strong>what</strong> rules apply. Reads Ordinance entries. Judges context. Narrates outcomes with meaning.</p>
-        </div>
-        <div class="compare-divider">+</div>
+        <div class="compare-divider">vs</div>
         <div class="compare-col compare-good">
-          <div class="compare-label" style="color: var(--gold);">Script</div>
-          <p style="font-size: 0.95rem; color: var(--text-dim); padding-left: 0;">Handles <strong>the numbers</strong>. Rolls dice. Applies damage. Updates HP. Math is never left to chance or imagination.</p>
+          <div class="compare-label">CSMS</div>
+          <ul>
+            <li>AI decides outcomes</li>
+            <li>Flexible narrative mechanics</li>
+            <li>Player vs story</li>
+            <li>Story focused</li>
+            <li>Multi-character + NPCs</li>
+            <li>Designed to be extended</li>
+          </ul>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- WHO IS IT FOR -->
-  <section class="for-who">
-    <div class="container">
-      <div class="section-tag">Who It's For</div>
-      <h2>Built for people who<br><em>take their stories seriously.</em></h2>
-      <div class="for-who-grid">
-        <div class="for-who-card">
-          <h3>World Makers</h3>
-          <p>You've written scenarios where the intent lives only in your head — or in Author's Note text the AI half-ignores. Ordinances give your world actual mechanical weight. Write a card. It executes.</p>
-        </div>
-        <div class="for-who-card">
-          <h3>Players</h3>
-          <p>You want consequences to feel real. A fight should mean something. A failed roll should hurt. Maybe the AI always seems to work in your favor — or your model adds chaos you can't predict. CSMS puts stakes back in the story. Mechanics are opt-in. You decide when they matter.</p>
-        </div>
-        <div class="for-who-card">
-          <h3>Scripters</h3>
-          <p>CSMS is a full system you can drop into any scenario. Character sheets, dice, inventory, combat, Ordinance — each one a module you can enable or disable independently. Use the whole stack or just the parts you need.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- FEATURES -->
   <section class="features">
     <div class="container">
       <div class="section-tag">Features</div>
       <h2>Everything you need.<br>Nothing you don't.</h2>
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon">⚔️</div>
-          <h3>Ordinance System</h3>
-          <p>Write rules in plain language on a story card. Script feeds it to AI, AI interprets it, script executes the numbers. Damage applies. Stats update. The story reflects reality.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🎲</div>
-          <h3>Dice Engine</h3>
-          <p>Full roll notation — <code>1d20+STR</code>, advantage, disadvantage. Stat modifiers calculated automatically. Player triggers rolls explicitly. No guessing, no luck-based narration.</p>
-        </div>
-        <div class="feature-card">
           <div class="feature-icon">📋</div>
           <h3>Character Sheets</h3>
-          <p>Dynamic story cards for every character — player and NPCs. Always visible, always in sync. Edit values directly in the card. Script validates and rewrites cleanly.</p>
+          <p>Dynamic story cards for every character — player and NPCs. Always visible, always in sync with your adventure.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✏️</div>
+          <h3>Editable Stats</h3>
+          <p>Edit values directly in the story card. Script validates, corrects errors, and rewrites cleanly. No commands needed.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🏷️</div>
           <h3>Tag System</h3>
-          <p>Add <code>[CSMS]</code> to any story card. When that character appears in the story, a sheet is auto-generated from their description. No manual stat assignment needed.</p>
+          <p>Add <code>[CSMS]</code> to any card. When that character appears in your story, a sheet is auto-generated from the description.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">👥</div>
           <h3>Multiplayer Ready</h3>
-          <p>Sheets auto-create when players join. Active player detection. Name change sync. Works out of the box with the Third Person plot component.</p>
+          <p>Sheets auto-create when players join. Active player detection. Name change sync. Works out of the box.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🎒</div>
-          <h3>Inventory</h3>
-          <p>Item tracking per character, stored inside their sheet card. Human readable, AI readable, script parseable. Player edits freely — script syncs on command.</p>
+          <div class="feature-icon">🧠</div>
+          <h3>AI Context Injection</h3>
+          <p>Compact character data is injected directly into what the AI sees — without bloating the story or breaking immersion.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🔔</div>
           <h3>NotifyThem</h3>
-          <p>Built-in notification system. Script communicates to player in clean brackets without breaking immersion. Also available as a standalone system for any AID script.</p>
+          <p>Built-in notification system. Script communicates to player in clean brackets. AI ignores it. Players see it.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🧩</div>
-          <h3>Modular</h3>
-          <p>Every system is a toggle. Use only what you need — sheets without combat, combat without Ordinance, or the full stack. Your scenario, your call.</p>
+          <div class="feature-icon">🎒</div>
+          <h3>Inventory System</h3>
+          <p>Natural language item management — pick up, drop, give, throw. No commands, no clutter. Just type what your character does.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚔️</div>
+          <h3>Ordinance System</h3>
+          <p>Named special abilities with real mechanical weight. The AI narrates freely — the script reads what happened and applies the consequences.</p>
         </div>
       </div>
     </div>
   </section>
-
-  <!-- QUICKSTART -->
-  <section class="quickstart">
     <div class="container">
       <div class="section-tag">Quick Start</div>
       <h2>Up and running<br>in 5 minutes.</h2>
@@ -343,7 +154,7 @@
           <div class="step-content">
             <h3>Add the Hooks</h3>
             <p>Three lines, three tabs. Input, Context, Output. Each gets one call to <code>CSMS(hook)</code>.</p>
-            <pre><code>CSMS("input");   // Input tab
+            <pre><code>CSMS("input");  // Input tab
 CSMS("context"); // Context tab
 CSMS("output");  // Output tab</code></pre>
           </div>
@@ -358,8 +169,8 @@ CSMS("output");  // Output tab</code></pre>
         <div class="step">
           <div class="step-num">04</div>
           <div class="step-content">
-            <h3>Write Your First Ordinance</h3>
-            <p>Create a story card. Give it a name. Write the rule in plain language. Trigger it with <code>/csms ordinance/Name/Character</code>. That's it.</p>
+            <h3>Play</h3>
+            <p>That's it. The AI now knows your stats. Edit the card anytime. The script keeps everything in sync.</p>
           </div>
         </div>
       </div>
@@ -370,7 +181,6 @@ CSMS("output");  // Output tab</code></pre>
     </div>
   </section>
 
-  <!-- COMPATIBILITY -->
   <section class="compatibility">
     <div class="container">
       <div class="section-tag">Compatibility</div>
@@ -380,17 +190,17 @@ CSMS("output");  // Output tab</code></pre>
         <div class="compat-item">
           <strong>Inner Self</strong>
           <span class="compat-status good">✓ Compatible</span>
-          <p>Same architecture pattern. State namespaced to avoid conflicts. Run them in the same script tabs.</p>
+          <p>Same architecture pattern. State namespaced to avoid conflicts.</p>
         </div>
         <div class="compat-item">
           <strong>Auto-Cards</strong>
           <span class="compat-status good">✓ Compatible</span>
-          <p>CSMS cards use unique keys. Tag system is designed to work alongside AC-generated cards.</p>
+          <p>CSMS cards use unique keys. Tag system works with AC-generated cards.</p>
         </div>
         <div class="compat-item">
           <strong>Third Person</strong>
           <span class="compat-status good">✓ Compatible</span>
-          <p>Full multiplayer support built in. Add the Third Person plot component and go.</p>
+          <p>Full multiplayer support built in. Add Third Person plot component and go.</p>
         </div>
       </div>
     </div>
@@ -411,6 +221,11 @@ CSMS("output");  // Output tab</code></pre>
             <a href="worldmaker.html">World Maker Guide</a>
             <a href="commands.html">Commands</a>
             <a href="changelog.html">Changelog</a>
+          </div>
+          <div class="footer-col">
+            <div class="footer-col-title">Systems</div>
+            <a href="inventory.html">Inventory</a>
+            <a href="ordinance.html">Ordinance</a>
           </div>
           <div class="footer-col">
             <div class="footer-col-title">Project</div>
