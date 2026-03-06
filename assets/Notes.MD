@@ -463,7 +463,33 @@ Characters can be restricted to specific Ordinances via their character sheet No
 
 ---
 
-## Character Sheet Notes Field
+## AID Input Prefix Behavior
+
+AID preserves the `> Name` or `> You` prefix in the story feed regardless of input hook text modifications. Scripts should only replace the action text, never the prefix.
+
+```
+> Suzanne gives the contract to Barbara
+          ↑ script only touches this part
+```
+
+AI sees the full line including AID's prefix — so natural prose replacement only needs to handle the action, not the speaker.
+
+**Implications:**
+- Caller detection — read `> Name` prefix that AID provides, reliable signal
+- Input replacement — only replace command portion, AID handles the rest
+- Multiplayer — no need to inject character name into replaced text, AID already shows it
+- This applies to all CSMS input replacements — Ordinance, Inventory, future systems
+
+**Examples:**
+```
+> You /csms ordinance/Fuzheng/Quick Strike/Borris
+→ script replaces command → "execute Quick Strike against Borris."
+→ AID shows: > You execute Quick Strike against Borris.
+
+> Suzanne gives the contract to Barbara
+→ script replaces action → "hands the contract to Barbara."  
+→ AID shows: > Suzanne hands the contract to Barbara.
+```
 
 The Notes (description) field of each character sheet (`📋 Name`) holds two blocks — inventory and assigned ordinances. Both auto-created when character sheet is created.
 
@@ -507,13 +533,73 @@ Run after editing inventory or ordinances in the card. Syncs both blocks to stat
 
 ---
 
+## iv_ Inventory Command System
+
+Natural language inventory management. No `/csms` commands. No AI confusion. Player types naturally, script handles state.
+
+### Commands
+```
+iv_take car keys
+iv_take glock 17 from Borris
+iv_drop wallet on the desk
+iv_give contract to Barbara
+iv_hurl knife at Borris
+iv_tuck gun under blazer
+```
+
+### How It Works
+- Script detects `iv_` prefix in player input
+- Strips `iv_` from input — original text preserved for AI
+- Parses keyword, item, receiver
+- Updates inventory state and character sheet Notes field
+- On success — AI reads natural input, narrates accordingly
+- On failure — input replaced with failure prose, AI narrates gracefully
+
+### Keywords
+| Action | Keywords |
+|--------|----------|
+| `take` | take, grab, pick up, collect, retrieve, get, acquire, tuck |
+| `drop` | drop, discard, throw away, leave, abandon, let go of |
+| `give` | give, hand, pass, offer, deliver, transfer, slide, shove |
+| `hurl` | throw, toss, hurl, fling, chuck, lob |
+
+### Item Parsing
+- Articles stripped — "the", "a", "an", "some", "my", "your", "his", "her", "their"
+- Possessives stripped — "Fuzheng's", "Borris's"
+- Location phrases stripped — "on the table", "into the trash", "inside the bag", "toward the wall"
+- Trailing filler stripped — "too", "also", "as well", "instead"
+- Items stored lowercase regardless of input capitalization
+
+### Receiver Detection
+- Validated against `findCharacter()` — case insensitive
+- Must be a character with a sheet — "receptionist", "clerk", "the floor" = not valid receivers
+- Pronouns not supported — "give him the wallet" fails, use character name
+- Trailing filler stripped from receiver — "from Borris too" → receiver = "Borris"
+
+### Known Limitations & Rules
+- **One item at a time** — `iv_take knife` not `iv_take knife and gun`
+- **One `iv_` per input** — choose the inventory-relevant action only
+- **Exact item name** — "knife" ≠ "sharp knife", type what's in inventory
+- **Pronouns fail** — always use character names, never "him/her/them"
+- **Receiver must have sheet** — can only transfer to/from characters with `📋` cards
+- **Multi-word items with prepositions** — `iv_take glock 17 from Borris` works, but `iv_take glock 17 from the old man from the street` may parse oddly — keep it simple
+
+### Failure Behavior
+- Item not in inventory → input replaced with natural failure prose, AI narrates gracefully
+- Receiver not found → treated as no receiver (location context) or failure depending on action
+- Unknown keyword → silent fail, input unchanged
+
+### Auto-Repair
+- Missing `[Inventory]` or `[Ordinances]` block → auto-created with placeholder dash on next action
+- Existing characters from before v1.8.0 get blocks added automatically
+
+---
+
 ### Parked for Later
 - Passive Ordinance types — fires automatically when condition is met in AI output, no command needed
 - How a character "learns" or "unlocks" an Ordinance
 - Once-per-combat tracking
 - Pronoun resolution across previous actions — currently limited to current output only
-- Auto-created `[Inventory]` and `[Ordinances]` blocks should include one placeholder dash `- ` so players know the format immediately
-- `naturalizeOrdinanceCommand()` — no-target case needs its own natural text e.g. `"execute Unwavering Focus."` instead of `"execute Unwavering Focus against ."`
 
 ---
 
