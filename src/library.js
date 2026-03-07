@@ -20,7 +20,7 @@ const CSMS_CONFIG =
 
   /* LEVELING */
   LEVEL_CAP:    50,     // Maximum level a character can reach
-  XP_THRESHOLD: 30,    // Flat XP required to level up
+  XP_THRESHOLD: 100,    // Flat XP required to level up
   HP_PER_LEVEL: 10,     // Max HP gained per level up
   DP_PER_LEVEL: 3,      // Development Points awarded on level up
 
@@ -34,7 +34,7 @@ const CSMS_CONFIG =
   XP_PER_ROLL_FAIL: 1,        // On failed dice roll
 
   // Proficiency +1 at each of these levels
-  PROFICIENCY_THRESHOLDS:  [2, 8, 12, 16, 20, 28, 36, 44, 50],
+  PROFICIENCY_THRESHOLDS:  [4, 8, 12, 16, 20, 28, 36, 44, 50],
 
   /*  STATS */
   STAT_MAX: 50,         // Maximum value for any stats
@@ -69,7 +69,7 @@ const CSMS_CONFIG =
 const NOTIFY_CONFIG = 
 {
   NOTIFICATION_HEADER: "!NOTIFICATION!",   // Header message
-  DEBUG_MODE: true,   // For developer only
+  DEBUG_MODE: false,   // For developer only
 }
 
 // ============================================
@@ -204,25 +204,38 @@ function CSMS(hook)
       `Full guide: ${CSMS_CONFIG.WEBSITE}`;
 
     const notes =
-      `MODULE_CHARACTER_SHEETS: true\n` +
-      `MODULE_COMBAT: true\n` +
-      `MODULE_ORDINANCE: true\n` +
-      `MODULE_INVENTORY: true\n` +
-      `DEBUG_MODE: false\n` +
-      `STAT_MAX: 50\n` +
-      `STAT_MIN: 1\n` +
-      `AVERAGE_STAT: 10\n` +
-      `DEFAULT_STAT: 10\n` +
-      `DEFAULT_HP: 10\n` +
-      `DEFAULT_AC: 10\n` +
-      `DEFAULT_SPEED: 30\n` +
-      `DAMAGE_DIE: 6\n` +
-      `LOOKBACK_ACTIONS: 5\n` +
-      `INJECTED_SHEET_MAX: 20\n` +
-      `ORD_PROXIMITY: 50\n` +
-      `ORD_DEFAULT_ROLL: 1d20\n` +
-      `ORD_ND_DAMAGE_DETECTION: false`;
-
+      `MODULE_CHARACTER_SHEETS: ${CSMS_CONFIG.MODULES.CHARACTER_SHEETS}\n` +
+      `MODULE_COMBAT: ${CSMS_CONFIG.MODULES.COMBAT}\n` +
+      `MODULE_ORDINANCE: ${CSMS_CONFIG.MODULES.ORDINANCE}\n` +
+      `MODULE_INVENTORY: ${CSMS_CONFIG.MODULES.INVENTORY}\n` +
+      `MODULE_LEVELING: ${CSMS_CONFIG.MODULES.LEVELING}\n` +
+      `DEBUG_MODE: ${NOTIFY_CONFIG.DEBUG_MODE}\n` +
+      `STAT_MAX: ${CSMS_CONFIG.STAT_MAX}\n` +
+      `STAT_MIN: ${CSMS_CONFIG.STAT_MIN}\n` +
+      `AVERAGE_STAT: ${CSMS_CONFIG.AVERAGE_STAT}\n` +
+      `DEFAULT_STAT: ${CSMS_CONFIG.DEFAULT_STAT}\n` +
+      `DEFAULT_HP: ${CSMS_CONFIG.DEFAULT_HP}\n` +
+      `DEFAULT_AC: ${CSMS_CONFIG.DEFAULT_AC}\n` +
+      `DEFAULT_SPEED: ${CSMS_CONFIG.DEFAULT_SPEED}\n` +
+      `DAMAGE_DIE: ${CSMS_CONFIG.DAMAGE_DIE}\n` +
+      `LOOKBACK_ACTIONS: ${CSMS_CONFIG.LOOKBACK_ACTIONS}\n` +
+      `INJECTED_SHEET_MAX: ${CSMS_CONFIG.INJECTED_SHEET_MAX}\n` +
+      `ORD_PROXIMITY: ${CSMS_CONFIG.ORD_PROXIMITY}\n` +
+      `ORD_DEFAULT_ROLL: ${CSMS_CONFIG.ORD_DEFAULT_ROLL}\n` +
+      `ORD_ND_DAMAGE_DETECTION: ${CSMS_CONFIG.ORD_ND_DAMAGE_DETECTION}\n` +
+      `LEVEL_CAP: ${CSMS_CONFIG.LEVEL_CAP}\n` +
+      `XP_THRESHOLD: ${CSMS_CONFIG.XP_THRESHOLD}\n` +
+      `HP_PER_LEVEL: ${CSMS_CONFIG.HP_PER_LEVEL}\n` +
+      `DP_PER_LEVEL: ${CSMS_CONFIG.DP_PER_LEVEL}\n` +
+      `XP_PER_ACTION: ${CSMS_CONFIG.XP_PER_ACTION}\n` +
+      `XP_PER_ORDINANCE: ${CSMS_CONFIG.XP_PER_ORDINANCE}\n` +
+      `XP_PER_HIT: ${CSMS_CONFIG.XP_PER_HIT}\n` +
+      `XP_PER_DAMAGE_RECEIVED: ${CSMS_CONFIG.XP_PER_DAMAGE_RECEIVED}\n` +
+      `XP_PER_KILL: ${CSMS_CONFIG.XP_PER_KILL}\n` +
+      `XP_PER_ROLL_SUCCESS: ${CSMS_CONFIG.XP_PER_ROLL_SUCCESS}\n` +
+      `XP_PER_ROLL_FAIL: ${CSMS_CONFIG.XP_PER_ROLL_FAIL}\n` +
+      `PROFICIENCY_THRESHOLDS: ${CSMS_CONFIG.PROFICIENCY_THRESHOLDS.join(",")}`;
+    
     storyCards.push(
     {
       title: "⚙️ CSMS CFG",
@@ -293,6 +306,51 @@ function CSMS(hook)
         case "PROFICIENCY_THRESHOLDS":
           CSMS_CONFIG.PROFICIENCY_THRESHOLDS = value.split(",").map(n => parseInt(n.trim())).filter(n => !isNaN(n));
           break;
+      }
+    }
+
+    // Auto-repair — append any missing keys with current CSMS_CONFIG defaults
+    const cfgCard = storyCards.find(card => card.title === "⚙️ CSMS CFG");
+    if (cfgCard && cfgCard.description)
+    {
+      const desc    = cfgCard.description;
+      const missing = [];
+
+      if (!desc.includes("MODULE_CHARACTER_SHEETS"))   missing.push(`MODULE_CHARACTER_SHEETS: ${CSMS_CONFIG.MODULES.CHARACTER_SHEETS}`);
+      if (!desc.includes("MODULE_COMBAT"))             missing.push(`MODULE_COMBAT: ${CSMS_CONFIG.MODULES.COMBAT}`);
+      if (!desc.includes("MODULE_ORDINANCE"))          missing.push(`MODULE_ORDINANCE: ${CSMS_CONFIG.MODULES.ORDINANCE}`);
+      if (!desc.includes("MODULE_INVENTORY"))          missing.push(`MODULE_INVENTORY: ${CSMS_CONFIG.MODULES.INVENTORY}`);
+      if (!desc.includes("MODULE_LEVELING"))           missing.push(`MODULE_LEVELING: ${CSMS_CONFIG.MODULES.LEVELING}`);
+      if (!desc.includes("DEBUG_MODE"))                missing.push(`DEBUG_MODE: ${NOTIFY_CONFIG.DEBUG_MODE}`);
+      if (!desc.includes("STAT_MAX"))                  missing.push(`STAT_MAX: ${CSMS_CONFIG.STAT_MAX}`);
+      if (!desc.includes("STAT_MIN"))                  missing.push(`STAT_MIN: ${CSMS_CONFIG.STAT_MIN}`);
+      if (!desc.includes("AVERAGE_STAT"))              missing.push(`AVERAGE_STAT: ${CSMS_CONFIG.AVERAGE_STAT}`);
+      if (!desc.includes("DEFAULT_STAT"))              missing.push(`DEFAULT_STAT: ${CSMS_CONFIG.DEFAULT_STAT}`);
+      if (!desc.includes("DEFAULT_HP"))                missing.push(`DEFAULT_HP: ${CSMS_CONFIG.DEFAULT_HP}`);
+      if (!desc.includes("DEFAULT_AC"))                missing.push(`DEFAULT_AC: ${CSMS_CONFIG.DEFAULT_AC}`);
+      if (!desc.includes("DEFAULT_SPEED"))             missing.push(`DEFAULT_SPEED: ${CSMS_CONFIG.DEFAULT_SPEED}`);
+      if (!desc.includes("DAMAGE_DIE"))                missing.push(`DAMAGE_DIE: ${CSMS_CONFIG.DAMAGE_DIE}`);
+      if (!desc.includes("LOOKBACK_ACTIONS"))          missing.push(`LOOKBACK_ACTIONS: ${CSMS_CONFIG.LOOKBACK_ACTIONS}`);
+      if (!desc.includes("INJECTED_SHEET_MAX"))        missing.push(`INJECTED_SHEET_MAX: ${CSMS_CONFIG.INJECTED_SHEET_MAX}`);
+      if (!desc.includes("ORD_PROXIMITY"))             missing.push(`ORD_PROXIMITY: ${CSMS_CONFIG.ORD_PROXIMITY}`);
+      if (!desc.includes("ORD_DEFAULT_ROLL"))          missing.push(`ORD_DEFAULT_ROLL: ${CSMS_CONFIG.ORD_DEFAULT_ROLL}`);
+      if (!desc.includes("ORD_ND_DAMAGE_DETECTION"))   missing.push(`ORD_ND_DAMAGE_DETECTION: ${CSMS_CONFIG.ORD_ND_DAMAGE_DETECTION}`);
+      if (!desc.includes("LEVEL_CAP"))                 missing.push(`LEVEL_CAP: ${CSMS_CONFIG.LEVEL_CAP}`);
+      if (!desc.includes("XP_THRESHOLD"))              missing.push(`XP_THRESHOLD: ${CSMS_CONFIG.XP_THRESHOLD}`);
+      if (!desc.includes("HP_PER_LEVEL"))              missing.push(`HP_PER_LEVEL: ${CSMS_CONFIG.HP_PER_LEVEL}`);
+      if (!desc.includes("DP_PER_LEVEL"))              missing.push(`DP_PER_LEVEL: ${CSMS_CONFIG.DP_PER_LEVEL}`);
+      if (!desc.includes("XP_PER_ACTION"))             missing.push(`XP_PER_ACTION: ${CSMS_CONFIG.XP_PER_ACTION}`);
+      if (!desc.includes("XP_PER_ORDINANCE"))          missing.push(`XP_PER_ORDINANCE: ${CSMS_CONFIG.XP_PER_ORDINANCE}`);
+      if (!desc.includes("XP_PER_HIT"))                missing.push(`XP_PER_HIT: ${CSMS_CONFIG.XP_PER_HIT}`);
+      if (!desc.includes("XP_PER_DAMAGE_RECEIVED"))    missing.push(`XP_PER_DAMAGE_RECEIVED: ${CSMS_CONFIG.XP_PER_DAMAGE_RECEIVED}`);
+      if (!desc.includes("XP_PER_KILL"))               missing.push(`XP_PER_KILL: ${CSMS_CONFIG.XP_PER_KILL}`);
+      if (!desc.includes("XP_PER_ROLL_SUCCESS"))       missing.push(`XP_PER_ROLL_SUCCESS: ${CSMS_CONFIG.XP_PER_ROLL_SUCCESS}`);
+      if (!desc.includes("XP_PER_ROLL_FAIL"))          missing.push(`XP_PER_ROLL_FAIL: ${CSMS_CONFIG.XP_PER_ROLL_FAIL}`);
+      if (!desc.includes("PROFICIENCY_THRESHOLDS"))    missing.push(`PROFICIENCY_THRESHOLDS: ${CSMS_CONFIG.PROFICIENCY_THRESHOLDS.join(",")}`);
+
+      if (missing.length > 0)
+      {
+        cfgCard.description += `\n` + missing.join(`\n`);
       }
     }
   }
@@ -1029,9 +1087,6 @@ function CSMS(hook)
 
   function processLevelUp(character)
   {
-    // DEBUG
-    log(`processLevelUp: ${character.name} pendingLevelUp=${character.pendingLevelUp} pendingDP=${character.pendingDP}`);
-
     // Only for character pending leveling up
     if (!character.pendingLevelUp) return;
     // Stop if reached max level
@@ -1073,6 +1128,36 @@ function CSMS(hook)
         : ``),
       `level up`
     );
+  }
+
+  // Let NPC spend their DP
+  function autoNPCSpend(character)
+  {
+    // Only NPC
+    if (character.isPlayer) return;
+    // Only if has pending DP
+    if (character.pendingDP <= 0) return;
+
+    const stats = ["str", "dex", "con", "int", "wis", "cha"];
+
+    // Run as long as DP available
+    while (character.pendingDP > 0)
+    {
+      // Pick random stat
+      const stat = stats[Math.floor(Math.random() * stats.length)];
+
+      // Skip if already at cap
+      if (character.stats[stat] >= CSMS_CONFIG.STAT_MAX)
+      {
+        // Check if all stats are capped - break to avoid infinite loop
+        const allCapped = stats.every(s => character.stats[s] >= CSMS_CONFIG.STAT_MAX);
+        if (allCapped) break;
+        continue;
+      }
+
+      character.stats[stat] += 1;
+      character.pendingDP   -= 1;
+    }
   }
 
   function removeCharacterCard(name)
@@ -2189,7 +2274,7 @@ function CSMS(hook)
 
   function parseCommand(cText)
   {
-    const parts   = cText.split("/");
+    const parts   = cText.split("/").map(p => p.trim());
     const commandIndentifiers = parts[1]?.trim().split(/\s+/);
     const action  = commandIndentifiers?.[1]?.toLowerCase().replace(/[.,!?"]+$/, "") || "";
     const args1   = parts[2]?.trim().replace(/[.,!?"]+$/, "") || "";
@@ -2316,6 +2401,7 @@ function CSMS(hook)
       state.characters.forEach(c => 
       {
         processLevelUp(c);
+        autoNPCSpend(c);
         updateCharacterCard(c);
       });
     }
