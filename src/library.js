@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.10.0 by PrinceF90
+// v1.10.0b by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -48,9 +48,13 @@ const CSMS_CONFIG =
   /*  TECHNICAL */
   LOOKBACK_ACTIONS: 5,      // How many actions back to search for characters
   INJECTED_SHEET_MAX: 20,   // Maximum charater sheet should be loaded
+  PENDING_EXPIRY: 3,        // Action taken until module expires (DO NOT TOUCH unless you know what you're doing)
 
   /* COMBAT (only when combat mechanis is true) */
   DAMAGE_DIE: 6,    // low fantasy = d4, high combat = d8
+
+  /* ACTION */
+  REST_HEAL_PERCENT: 10,    // Percentage of HP restored when resting
 
   /* ORDINANCE */
   ORD_ERROR: "⚠ ORDINANCE ERROR\n",    // Header for Ordinance error message
@@ -116,13 +120,19 @@ const CSMS_ORD_TIERS =
 // Inventory management keywords
 // ============================================
 
-const CSMS_IV_KEYWORDS =
+const CSMS_ACT_KEYWORDS =
 {
   take:   ["take", "grab", "pick up", "collect", "retrieve", "get", "acquire", "tuck"],
   drop:   ["drop", "discard", "throw away", "leave", "abandon", "let go of"],
   give:   ["give", "hand", "pass", "offer", "deliver", "transfer", "slide", "shove"],
   hurl:   ["throw", "toss", "hurl", "fling", "chuck", "lob"],
+  rest:   ["rest", "sleep", "nap", "recover", "sit down", "lie down"],
 };
+
+// ============================================
+// API Related
+// ============================================
+const CSMS_PENDING_KEYS = ["sheet", "roll", "ordinance"];
 
 // ============================================
 // NotifyThem - An AID dynamic notification and logging system made by programmer for programmer
@@ -218,8 +228,10 @@ function CSMS(hook)
       `DEFAULT_AC: ${CSMS_CONFIG.DEFAULT_AC}\n` +
       `DEFAULT_SPEED: ${CSMS_CONFIG.DEFAULT_SPEED}\n` +
       `DAMAGE_DIE: ${CSMS_CONFIG.DAMAGE_DIE}\n` +
+      `REST_HEAL_PERCENT: ${CSMS_CONFIG.REST_HEAL_PERCENT}\n` +
       `LOOKBACK_ACTIONS: ${CSMS_CONFIG.LOOKBACK_ACTIONS}\n` +
       `INJECTED_SHEET_MAX: ${CSMS_CONFIG.INJECTED_SHEET_MAX}\n` +
+      `PENDING EXPIRY: ${CSMS_CONFIG.PENDING_EXPIRY}\n` +
       `ORD_PROXIMITY: ${CSMS_CONFIG.ORD_PROXIMITY}\n` +
       `ORD_DEFAULT_ROLL: ${CSMS_CONFIG.ORD_DEFAULT_ROLL}\n` +
       `ORD_ND_DAMAGE_DETECTION: ${CSMS_CONFIG.ORD_ND_DAMAGE_DETECTION}\n` +
@@ -283,8 +295,11 @@ function CSMS(hook)
         case "DEFAULT_AC":        CSMS_CONFIG.DEFAULT_AC        = parseInt(value); break;
         case "DEFAULT_SPEED":     CSMS_CONFIG.DEFAULT_SPEED     = parseInt(value); break;
         case "DAMAGE_DIE":        CSMS_CONFIG.DAMAGE_DIE        = parseInt(value); break;
+        case "REST_HEAL_PERCENT": CSMS_CONFIG.REST_HEAL_PERCENT = parseInt(value);
+        break;
         case "LOOKBACK_ACTIONS":  CSMS_CONFIG.LOOKBACK_ACTIONS  = parseInt(value); break;
         case "INJECTED_SHEET_MAX":CSMS_CONFIG.INJECTED_SHEET_MAX= parseInt(value); break;
+        case "PENDING_EXPIRY":    CSMS_CONFIG.INJECTED_SHEET_MAX= parseInt(value); break;
         case "ORD_PROXIMITY":     CSMS_CONFIG.ORD_PROXIMITY     = parseInt(value); break;
 
         // Dice notation
@@ -330,8 +345,10 @@ function CSMS(hook)
       if (!desc.includes("DEFAULT_AC"))                missing.push(`DEFAULT_AC: ${CSMS_CONFIG.DEFAULT_AC}`);
       if (!desc.includes("DEFAULT_SPEED"))             missing.push(`DEFAULT_SPEED: ${CSMS_CONFIG.DEFAULT_SPEED}`);
       if (!desc.includes("DAMAGE_DIE"))                missing.push(`DAMAGE_DIE: ${CSMS_CONFIG.DAMAGE_DIE}`);
+      if (!desc.includes("REST_HEAL_PERCENT"))         missing.push(`REST_HEAL_PERCENT: ${CSMS_CONFIG.REST_HEAL_PERCENT}`);
       if (!desc.includes("LOOKBACK_ACTIONS"))          missing.push(`LOOKBACK_ACTIONS: ${CSMS_CONFIG.LOOKBACK_ACTIONS}`);
       if (!desc.includes("INJECTED_SHEET_MAX"))        missing.push(`INJECTED_SHEET_MAX: ${CSMS_CONFIG.INJECTED_SHEET_MAX}`);
+      if (!desc.includes("PENDING_EXPIRY"))            missing.push(`PENDING_EXPIRY: ${CSMS_CONFIG.PENDING_EXPIRY}`);
       if (!desc.includes("ORD_PROXIMITY"))             missing.push(`ORD_PROXIMITY: ${CSMS_CONFIG.ORD_PROXIMITY}`);
       if (!desc.includes("ORD_DEFAULT_ROLL"))          missing.push(`ORD_DEFAULT_ROLL: ${CSMS_CONFIG.ORD_DEFAULT_ROLL}`);
       if (!desc.includes("ORD_ND_DAMAGE_DETECTION"))   missing.push(`ORD_ND_DAMAGE_DETECTION: ${CSMS_CONFIG.ORD_ND_DAMAGE_DETECTION}`);
@@ -355,8 +372,9 @@ function CSMS(hook)
     }
   }
 
-
   initNotify();
+  // Init pending container
+  if (!state.csmsPending) state.csmsPending = {};
 
   if (state.characters === undefined)
   {
@@ -390,7 +408,7 @@ function CSMS(hook)
   syncMultiplayerCharacters();
 
   // ==================
-  // UTILITIES
+  // UTILITIES / HELPER
   // ==================
 
   function rollDice(sides)
@@ -411,6 +429,90 @@ function CSMS(hook)
   function statMod(score)
   {
     return formatMod(getModifier(score));
+  }
+  // Inventory object and receiver identifier
+  function parseActItemReceiver(remainingText)
+  {
+    // Parse item and receiver
+    // "contract to Barbara" → item: "contract", receiver: "Barbara"
+    // "knife" → item: "knife", receiver: null
+    const toMatch   = remainingText.match(/^(.+?)\s+to\s+(.+)$/);
+    const atMatch   = remainingText.match(/^(.+?)\s+at\s+(.+)$/);
+    const fromMatch = remainingText.match(/^(.+?)\s+from\s+(.+)$/);
+
+    let item     = remainingText;
+    let receiver = null;
+
+    if (toMatch)
+    {
+      const possibleReceiver = toMatch[2].trim()
+        .replace(/[.,!?"]+$/, "")
+        .replace(/\s+(too|also|as well|instead|as well|either|then|now)$/i, "")
+        .trim();
+
+      item = toMatch[1];
+      receiver = findCharacter(possibleReceiver) ? possibleReceiver : null;
+    }
+    else if (atMatch)
+    {
+      const possibleReceiver = atMatch[2].trim()
+        .replace(/[.,!?"]+$/, "")
+        .replace(/\s+(too|also|as well|instead|as well|either|then|now)$/i, "")
+        .trim();
+
+      item = atMatch[1];
+      receiver = findCharacter(possibleReceiver) ? possibleReceiver : null;
+    }
+    else if (fromMatch)
+    {
+      const possibleReceiver = fromMatch[2].trim()
+      .replace(/[.,!?"]+$/, "")
+      .replace(/\s+(too|also|as well|instead|as well|either|then|now)$/i, "")
+      .trim();
+
+      item = fromMatch[1];
+      receiver = findCharacter(possibleReceiver) ? possibleReceiver : null;
+    }
+
+    // Strip articles AND possessives AND trailing punctuation
+    item = item.replace(/^(the|a|an|some|my|your|his|her|their)\s+/i, "").trim();
+    item = item.replace(/[.,!?"]+$/, "").trim();
+    item = item.replace(/^[a-zA-Z]+'s\s+/i, "").trim();
+    item = item.replace(/\s+(on|in|inside|onto|into|over|under|at|by|near|toward)\s+(the|a|an)?\s*\w+.*$/i, "").trim();
+
+    return {item, receiver};
+  }
+
+  // Add module flag to queue
+  function setPending(key, data)
+  {
+    state.csmsPending[key] = { ...data, actionCount: 0 };
+  }
+
+  // Clear module flag
+  function clearPending(key, reason = null)
+  {
+    if (reason) notify(reason, `auto-repair: ${key} cleared`);
+    state.csmsPending[key] = null;
+  }
+
+  function tickPending()
+  {
+    for (const key of CSMS_PENDING_KEYS)
+    {
+      if (!state.csmsPending[key]) continue;
+      state.csmsPending[key].actionCount++;
+      if (state.csmsPending[key].actionCount > CSMS_CONFIG.PENDING_EXPIRY)
+      {
+        clearPending(key, `${key} expired — auto cleared.`);
+      }
+    }
+  }
+
+  // Check if the module queue is busy
+  function isModuleBusy(ignoredKey)
+  {
+    return CSMS_PENDING_KEYS.some(key => key !== ignoredKey && state.csmsPending[key]);
   }
 
   // ============================================
@@ -506,12 +608,12 @@ function CSMS(hook)
   // check if roll is needed and execute accordingly
   function rollCheck()
   {
-    if (!state.csmsRollPending) return;  // not a roll action, exit early
+    if (!state.csmsPending.roll) return;  // not a roll action, exit early
 
     let closureText = "";
 
     // Extract for quick call
-    const {caller, action, oppose} = state.csmsRollPending;
+    const {caller, action, oppose} = state.csmsPending.roll;
     const statMap = {
       "str": "str", "strength": "str",
       "dex": "dex", "dexterity": "dex",
@@ -638,7 +740,7 @@ function CSMS(hook)
 
     // Give instructions to player and GM
     text = `## Continue the story. ${caller} attempted to ${action}. ${closureText}`;
-    state.csmsRollPending = null;
+    clearPending("roll");
   }
 
   // ==================
@@ -751,6 +853,8 @@ function CSMS(hook)
   // Used when receiver is ambiguous like him
   function resolveReceiver(output, wordIdx, callerName, targetName)
   {
+    const receiveWords = /\btake\b|\breceive\b|\bsuffer\b|\bfeel\b|\babsorb\b|\bendure\b/;
+
     const callerLow = callerName.toLowerCase();
     const targetLow = targetName.toLowerCase();
 
@@ -758,7 +862,10 @@ function CSMS(hook)
     const nearAfter = output.toLowerCase().slice(wordIdx, wordIdx + 25);
 
     // Explicit caller pronouns
-    if (/\byou\b|\byour\b/.test(nearAfter)) return "caller";
+    if (/\byou\b|\byour\b/.test(nearAfter))
+    {
+      return receiveWords.test(nearAfter) ? "caller" : "target";
+    }
 
     // Explicit names
     if (nearAfter.includes(callerLow)) return "caller";
@@ -1077,9 +1184,6 @@ function CSMS(hook)
     // Skip if reached max level
     if (character.level >= CSMS_CONFIG.LEVEL_CAP) return;
 
-    // DEBUG
-    log(`awardXP: ${character.name} += ${amount} (was ${character.xp})`);
-
     // Add amount to character XP
     character.xp += amount;
 
@@ -1243,9 +1347,9 @@ function CSMS(hook)
       else
       {
         // No CS anywhere — trigger AI generation
-        if (!state.csmsPending)
+        if (!state.csmsPending.sheet)
         {
-          state.csmsPending = name;
+          setPending("sheet", {name: name});
           state.memory.frontMemory = `[Do not continue the story. Instead, based on the story card entry for "${name}", respond ONLY with this exact format and nothing else: STR:x DEX:x CON:x INT:x WIS:x CHA:x HP:x AC:x]`;
         }
       }
@@ -1255,9 +1359,9 @@ function CSMS(hook)
   // Create CS based on AI output
   function generateNarrativeSheet()
   {
-    if (state.csmsPending)
+    if (state.csmsPending.sheet)
     {
-      const name = state.csmsPending;
+      const name = state.csmsPending.sheet.name;
       
       // Try to parse stats from AI response
       const strMatch = text.match(/STR:\s*(\d+)/i);
@@ -1294,7 +1398,7 @@ function CSMS(hook)
         if (taggedCard) taggedCard.title = name;
 
         // Clear pending and strip stats from output
-        state.csmsPending = null;
+        clearPending("sheet");
         text = text.replace(/STR:\s*\d+\s*DEX:\s*\d+\s*CON:\s*\d+\s*INT:\s*\d+\s*WIS:\s*\d+\s*CHA:\s*\d+\s*HP:\s*\d+\s*AC:\s*\d+/i, "").trim();
 
         notify(
@@ -1330,9 +1434,9 @@ function CSMS(hook)
 
   function injectStatCheck()
   {
-    if (!state.csmsRollPending) return;
-    const { caller, action, oppose } = state.csmsRollPending;
-    if (state.csmsRollPending.oppose)
+    if (!state.csmsPending.roll) return;
+    const { caller, action, oppose } = state.csmsPending.roll;
+    if (state.csmsPending.roll.oppose)
     {
       // VS NPC
       text = text.trimEnd() + `\n---\n\n## Reply with exactly two lines.\nLine 1: most relevant stat for ${caller} to "${action}": STR, DEX, CON, INT, WIS, or CHA.\nLine 2: most relevant stat for ${oppose} to oppose this: STR, DEX, CON, INT, WIS, or CHA. Nothing else.\n`;
@@ -1378,7 +1482,9 @@ function CSMS(hook)
     {
       const trimmed = line.trim();
       if (trimmed === "[Ordinances]") continue;
-      if (trimmed.startsWith("- ") || trimmed.startsWith("-")) ordinances.push(trimmed.replace(/^-\s*/, "").trim());
+
+      const item = trimmed.replace(/^-\s*/, "").trim();
+      if (item && item !== "-") ordinances.push(item);
     }
 
     c.ordinances = ordinances;
@@ -1387,9 +1493,9 @@ function CSMS(hook)
   function processOrdinanceTags()
   {
     // Stop immediately if there is no pending states
-    if (!state.csmsOrdinancePending) return;
+    if (!state.csmsPending.ordinance) return;
 
-    const pending = state.csmsOrdinancePending;
+    const pending = state.csmsPending.ordinance;
     const { step, caller, target, type, notation } = pending
 
     // ---- STEP 1: Detect DAMAGING or NONDAMAGING ----
@@ -1405,8 +1511,8 @@ function CSMS(hook)
           `${CSMS_CONFIG.ORD_ERROR}Step 1 failed - AI failed to detect DAMAGING or NON DAMAGING.\nOrdinance "${pending.ordinanceName}" has been cancelled.`,
           `ordinance step 1: unexpected response`
         );
-
-        state.csmsOrdinancePending = null;
+        
+        clearPending("ordinance");
         text = "OOC: Clear everything including your input and try again.";
 
         return;
@@ -1436,7 +1542,7 @@ function CSMS(hook)
       }
 
       // Roll for it... 😏
-      const callerChar = findCharacter(state.csmsOrdinancePending.caller);
+      const callerChar = findCharacter(state.csmsPending.ordinance.caller);
       const rollResult = resolveRoll(resolvedNotation, callerChar, "normal");
       pending.notation = resolvedNotation;
       pending.rollResult = rollResult;
@@ -1455,8 +1561,8 @@ function CSMS(hook)
     // ---- STEP 3 DAMAGING: Scan narrative for damage ----
     if (step === 3)
     {
-      const targetChar = findCharacter(state.csmsOrdinancePending.target);
-      const callerChar = findCharacter(state.csmsOrdinancePending.caller);
+      const targetChar = findCharacter(state.csmsPending.ordinance.target);
+      const callerChar = findCharacter(state.csmsPending.ordinance.caller);
 
       if (targetChar && callerChar)
       {
@@ -1481,7 +1587,7 @@ function CSMS(hook)
         }
       }
 
-      state.csmsOrdinancePending = null;
+      clearPending("ordinance");
       
       return;
     }
@@ -1497,7 +1603,7 @@ function CSMS(hook)
         notify(
           `${CSMS_CONFIG.ORD_ERROR}Step 2 failed — AI did not return ROLL or NARRATIVE.\nOrdinance "${pending.ordinanceName}" has been cancelled.`,
           `ordinance step 2 nondamaging: unexpected response`);
-        state.csmsOrdinancePending = null;
+        clearPending("ordinance");
         text = "OOC: Clear everything including your input and try again.";
         return;
       }
@@ -1527,7 +1633,7 @@ function CSMS(hook)
           `ordinance step 2-B: using default notation`);
       }
 
-      const callerChar = findCharacter(state.csmsOrdinancePending.caller);
+      const callerChar = findCharacter(state.csmsPending.ordinance.caller);
       const rollResult = resolveRoll(resolvedNotation, callerChar, "normal");
       
       pending.notation   = resolvedNotation;
@@ -1545,7 +1651,7 @@ function CSMS(hook)
     // ---- STEP 3-ND NONDAMAGING: Pure narrative, clear state ----
     if (step === "3-ND")
     {
-      state.csmsOrdinancePending = null;
+      clearPending("ordinance");
       return;
     }
   }
@@ -1553,9 +1659,9 @@ function CSMS(hook)
   function injectOrdinanceCheck()
   {
     // Stop from always running
-    if (!state.csmsOrdinancePending) return;
+    if (!state.csmsPending.ordinance) return;
 
-    const pending = state.csmsOrdinancePending;
+    const pending = state.csmsPending.ordinance;
     const { step, caller, target, entry, ordinanceName } = pending;
 
     // STEP 1
@@ -1661,9 +1767,8 @@ function CSMS(hook)
   // ACTION HANDLER
   // ==================
 
-  function takeItem(caller, item, receiver, originalText)
+  function takeItem(caller, item, receiver)
   {
-    
     const from = receiver ? findCharacter(receiver) : null;
 
     if (from)
@@ -1672,7 +1777,7 @@ function CSMS(hook)
   
       if (idx === -1)
       {
-        text = originalText.replace(/iv_[^\n]*/i, `look for ${item} on ${from.name}, but cannot find it.`);
+        text = state.lastInput.replace(/act_[^\n]*/i, `look for ${item} on ${from.name}, but cannot find it.`);
 
         return true;
       }
@@ -1686,13 +1791,13 @@ function CSMS(hook)
     return null;
   }
 
-  function dropItem(caller, item, originalText)
+  function dropItem(caller, item)
   {
     const idx = caller.inventory.findIndex(i => i.toLowerCase() === item.toLowerCase());
     
     if (idx === -1)
     {
-      text = originalText.replace(/iv_[^\n]*/i, `reach for ${item}, but realize it isn't there.`);
+      text = state.lastInput.replace(/act_[^\n]*/i, `reach for ${item}, but realize it isn't there.`);
 
       return true;
     }
@@ -1702,19 +1807,19 @@ function CSMS(hook)
     return null;
   }
 
-  function giveItem(caller, item, receiver, originalText)
+  function giveItem(caller, item, receiver)
   {
     const idx = caller.inventory.findIndex(i => i.toLowerCase() === item.toLowerCase());
     if (idx === -1)
     {
-      text = originalText.replace(/iv_[^\n]*/i, `about to give something but realize that its nowhere to be found.`);
+      text = state.lastInput.replace(/act_[^\n]*/i, `about to give something but realize that its nowhere to be found.`);
 
       return true;
     }
 
     if (!receiver)
     {
-      text = originalText.replace(/iv_[^\n]*/i, `look around, unsure who to give the ${item} to.`);
+      text = state.lastInput.replace(/act_[^\n]*/i, `look around, unsure who to give the ${item} to.`);
 
       return true;
     }
@@ -1722,7 +1827,7 @@ function CSMS(hook)
     const to = findCharacter(receiver);
     if (!to)
     {
-      text = originalText.replace(/iv_[^\n]*/i, `look for someone to give the ${item} to, but cannot find them.`);
+      text = state.lastInput.replace(/act_[^\n]*/i, `look for someone to give the ${item} to, but cannot find them.`);
 
       return true;
     }
@@ -1735,12 +1840,12 @@ function CSMS(hook)
     return null;
   }
 
-  function hurlItem(caller, item, receiver, originalText)
+  function hurlItem(caller, item, receiver)
   {
     const idx = caller.inventory.findIndex(i => i.toLowerCase() === item.toLowerCase());
     if (idx === -1)
     {
-      text = originalText.replace(/iv_[^\n]*/i, `reach for ${item} to throw, but realize it isn't there.`);
+      text = state.lastInput.replace(/act_[^\n]*/i, `reach for ${item} to throw, but realize it isn't there.`);
 
       return true;
     }
@@ -1926,12 +2031,11 @@ function CSMS(hook)
         vs = opponent;
       }
     }
-    state.csmsRollPending = 
-    {
+    setPending("roll", {
       caller: caller,
       action: action,
       oppose: vs,
-    };
+    });
     
     return null; // Silent for now, Notification comes later
   }
@@ -1988,8 +2092,7 @@ function CSMS(hook)
     awardXP(callerChar, CSMS_CONFIG.XP_PER_ORDINANCE);
 
     // All good - set pending state
-    state.csmsOrdinancePending = 
-    {
+    setPending("ordinance", {
       step:             1,
       caller:           callerChar.name,
       ordinanceName:    ordCard.title,
@@ -1998,7 +2101,7 @@ function CSMS(hook)
       type:             null,
       notation:         null,
       rollResult:       null,
-    };
+    });
     
     return `Ordinance "${ordCard.title}" — ${callerChar.name} vs ${targetChar ? targetChar.name : "no target"}. Executing...`;
   }
@@ -2015,17 +2118,17 @@ function CSMS(hook)
     return `${c.name}'s sheet notes synced.`;
   }
 
-  // handle how script process the iv_action command
-  function handleInventoryCommand(ivText, originalText)
+  // handle how script process the act_action command
+  function handleActCommand(actText)
   {
-    // Strip "iv_" prefix
-    const raw = ivText.slice(3).trim().toLowerCase();
+    // Strip "act_" prefix
+    const raw = actText.slice(4).trim().toLowerCase();
 
     // Detect action type
     let action = null;
     let matchedKeyword = null;
 
-    for (const [actionType, keywords] of Object.entries(CSMS_IV_KEYWORDS))
+    for (const [actionType, keywords] of Object.entries(CSMS_ACT_KEYWORDS))
     {
       for (const keyword of keywords)
       { 
@@ -2040,80 +2143,38 @@ function CSMS(hook)
       if (action) break;
     }
 
-    if (!action) return `Unknown inventory action. Use take, drop, give, or throw.`;
+    if (!action) return `Unknown action. Use take, drop, give, throw, or rest.`;
 
     // Strip keyword from front
-    const restOriginal = raw.slice(matchedKeyword.length).trim();
-    const rest = restOriginal.toLowerCase();
+    const remainingWords = raw.slice(matchedKeyword.length).trim();
 
     // Get caller
     const caller = getCallerCharacter();
     if (!caller) return `No active player found.`;
 
-    // Parse item and receiver
-    // "contract to Barbara" → item: "contract", receiver: "Barbara"
-    // "knife" → item: "knife", receiver: null
-    const toMatch   = restOriginal.match(/^(.+?)\s+to\s+(.+)$/);
-    const atMatch   = restOriginal.match(/^(.+?)\s+at\s+(.+)$/);
-    const fromMatch = restOriginal.match(/^(.+?)\s+from\s+(.+)$/);
-
-    let item     = rest;
-    let receiver = null;
-
-    if (toMatch)
-    {
-      const possibleReceiver = toMatch[2].trim()
-        .replace(/[.,!?"]+$/, "")
-        .replace(/\s+(too|also|as well|instead|as well|either|then|now)$/i, "")
-        .trim();
-
-      item = toMatch[1];
-      receiver = findCharacter(possibleReceiver) ? possibleReceiver : null;
-    }
-    else if (atMatch)
-    {
-      const possibleReceiver = atMatch[2].trim()
-        .replace(/[.,!?"]+$/, "")
-        .replace(/\s+(too|also|as well|instead|as well|either|then|now)$/i, "")
-        .trim();
-
-      item = atMatch[1];
-      receiver = findCharacter(possibleReceiver) ? possibleReceiver : null;
-    }
-    else if (fromMatch)
-    {
-      const possibleReceiver = fromMatch[2].trim()
-      .replace(/[.,!?"]+$/, "")
-      .replace(/\s+(too|also|as well|instead|as well|either|then|now)$/i, "")
-      .trim();
-
-      item = fromMatch[1];
-      receiver = findCharacter(possibleReceiver) ? possibleReceiver : null;
-    }
-
-    // Strip articles AND possessives AND trailing punctuation
-    item = item.replace(/^(the|a|an|some|my|your|his|her|their)\s+/i, "").trim();
-    item = item.replace(/[.,!?"]+$/, "").trim();
-    item = item.replace(/^[a-zA-Z]+'s\s+/i, "").trim();
-    item = item.replace(/\s+(on|in|inside|onto|into|over|under|at|by|near|toward)\s+(the|a|an)?\s*\w+.*$/i, "").trim();
-
-    // Route to action handler
     switch(action)
     {
-      case "take": 
-        if (takeItem(caller, item, receiver, originalText)) return true; break;
-      case "drop": 
-        if (dropItem(caller, item, originalText)) return true; break;
-      case "give": 
-        if (giveItem(caller, item, receiver, originalText)) return true; break;
-      case "hurl": 
-        if (hurlItem(caller, item, receiver, originalText)) return true; break;
+      case "take":
+      case "drop":
+      case "give":
+      case "hurl":
+      {
+        const { item, receiver } = parseActItemReceiver(remainingWords);
+        
+        if (action === "take") { if (takeItem(caller, item, receiver)) return true; break; }
+        if (action === "drop") { if (dropItem(caller, item)) return true; break; }
+        if (action === "give") { if (giveItem(caller, item, receiver)) return true; break; }
+        if (action === "hurl") { if (hurlItem(caller, item, receiver)) return true; break; }
+        break;
+      }
+      case "rest":
+        if (handleRest(caller)) return true; break;
     }
 
     return null;
   }
 
-  function handleDP(args, originalText)
+  function handleDP(args)
   {
     const caller = getCallerCharacter();
     if (!caller) return `No active player found.`;
@@ -2229,6 +2290,21 @@ function CSMS(hook)
       (warnings.length > 0 ? `\nWarnings:\n${warnings.join("\n")}\n` : ``) + 
       `\nDelete this response before continuing with the story.`
     );
+  }
+
+  function handleRest(caller)
+  {
+    // stop if no caller
+    if (!caller) return;
+
+    const healAmount  = Math.floor(caller.hp.max * (CSMS_CONFIG.REST_HEAL_PERCENT / 100));
+    const newHP       = Math.min(caller.hp.current + healAmount, caller.hp.max);
+
+    caller.hp.current = newHP;
+    updateCharacterCard(caller);
+
+    // Success - let AI narrate naturally
+    return false;
   }
 
   //--------------------------
@@ -2359,13 +2435,13 @@ function CSMS(hook)
     }
 
     // Inventory command
-    const ivMatch = originalText.match(/iv_[^\n]*/i);
-    if (ivMatch)
+    const actMatch = originalText.match(/act_[^\n]*/i);
+    if (actMatch)
     { 
-      const ivFailed = handleInventoryCommand(ivMatch[0].trim(), originalText);
+      const actFailed = handleActCommand(actMatch[0].trim(), originalText);
       
-      // If action success, remove the iv_ tag, unsuccessful case handled in each action
-      if (!ivFailed) text = originalText.replace(/iv_/i, "");
+      // If action success, remove the act_ tag, unsuccessful case handled in each action
+      if (!actFailed) text = originalText.replace(/act_/i, "");
     }
   }
 
@@ -2391,6 +2467,9 @@ function CSMS(hook)
 
   if (hook === "output")
   {
+    // Run pending tick
+    tickPending();
+
     if (CSMS_CONFIG.MODULES.LEVELING && state.pendingDPOutput)
     {
       text = state.pendingDPOutput;
@@ -2399,8 +2478,8 @@ function CSMS(hook)
     }
 
     generateNarrativeSheet();
-    if (CSMS_CONFIG.MODULES.COMBAT) rollCheck();
-    if (CSMS_CONFIG.MODULES.ORDINANCE) processOrdinanceTags();
+    if (CSMS_CONFIG.MODULES.COMBAT &&     !isModuleBusy("roll")) rollCheck();
+    if (CSMS_CONFIG.MODULES.ORDINANCE &&  !isModuleBusy("ordinance")) processOrdinanceTags();
     
     // Leveling last - after all XP sources has been fired
     if (CSMS_CONFIG.MODULES.LEVELING)
