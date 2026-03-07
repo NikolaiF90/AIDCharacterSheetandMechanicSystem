@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.8.0 by PrinceF90
+// v1.10.0 by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -14,8 +14,27 @@ const CSMS_CONFIG =
     CHARACTER_SHEETS: true,   // includes tag system + context injection
     COMBAT: true,             // uses dice internally, needs CHARACTER_SHEETS
     ORDINANCE:true,           // uses dice internally, needs 
-    INVENTORY: true,         // Future - not yet implemented
+    INVENTORY: true,          // Natural language inventory management
+    LEVELING: true,           // XP, level up, upgrade points, proficiency scaling
   },
+
+  /* LEVELING */
+  LEVEL_CAP:    50,     // Maximum level a character can reach
+  XP_THRESHOLD: 30,    // Flat XP required to level up
+  HP_PER_LEVEL: 10,     // Max HP gained per level up
+  DP_PER_LEVEL: 3,      // Development Points awarded on level up
+
+  // XP Sources - Set 0 to disable
+  XP_PER_ACTION: 1,           // Every action taken
+  XP_PER_ORDINANCE: 5,        // Every Ordinance execution
+  XP_PER_HIT: 3,              // When inflicting damage
+  XP_PER_DAMAGE_RECEIVED: 2,  // When taking damage 
+  XP_PER_KILL: 10,            // When making a killing blow
+  XP_PER_ROLL_SUCCESS: 3,     // On successful dice roll
+  XP_PER_ROLL_FAIL: 1,        // On failed dice roll
+
+  // Proficiency +1 at each of these levels
+  PROFICIENCY_THRESHOLDS:  [2, 8, 12, 16, 20, 28, 36, 44, 50],
 
   /*  STATS */
   STAT_MAX: 50,         // Maximum value for any stats
@@ -91,6 +110,18 @@ const CSMS_ORD_TIERS =
     range: [0.60, 0.75],
     words: ["sever", "impale", "disembowel", "incinerate", "disintegrate", "liquefy", "behead", "dismember", "gut", "skewer", "execute"]
   },
+};
+
+// ============================================
+// Inventory management keywords
+// ============================================
+
+const CSMS_IV_KEYWORDS =
+{
+  take:   ["take", "grab", "pick up", "collect", "retrieve", "get", "acquire", "tuck"],
+  drop:   ["drop", "discard", "throw away", "leave", "abandon", "let go of"],
+  give:   ["give", "hand", "pass", "offer", "deliver", "transfer", "slide", "shove"],
+  hurl:   ["throw", "toss", "hurl", "fling", "chuck", "lob"],
 };
 
 // ============================================
@@ -202,7 +233,7 @@ function CSMS(hook)
     });
   }
 
-  // Parse the value - Change the value as cfg card
+  // Parse the value - Sync script values with cfg card
   function parseConfigCard()
   {
     const card = storyCards.find(card => card.title === "⚙️ CSMS CFG");
@@ -245,6 +276,23 @@ function CSMS(hook)
 
         // Dice notation
         case "ORD_DEFAULT_ROLL":  CSMS_CONFIG.ORD_DEFAULT_ROLL  = value; break;
+
+        // Leveling
+        case "MODULE_LEVELING":         CSMS_CONFIG.MODULES.LEVELING        = value === "true"; break;
+        case "LEVEL_CAP":               CSMS_CONFIG.LEVEL_CAP               = parseInt(value); break;
+        case "XP_THRESHOLD":            CSMS_CONFIG.XP_THRESHOLD            = parseInt(value); break;
+        case "HP_PER_LEVEL":            CSMS_CONFIG.HP_PER_LEVEL            = parseInt(value); break;
+        case "DP_PER_LEVEL":            CSMS_CONFIG.DP_PER_LEVEL            = parseInt(value); break;
+        case "XP_PER_ACTION":           CSMS_CONFIG.XP_PER_ACTION           = parseInt(value); break;
+        case "XP_PER_ORDINANCE":        CSMS_CONFIG.XP_PER_ORDINANCE        = parseInt(value); break;
+        case "XP_PER_HIT":              CSMS_CONFIG.XP_PER_HIT              = parseInt(value); break;
+        case "XP_PER_DAMAGE_RECEIVED":  CSMS_CONFIG.XP_PER_DAMAGE_RECEIVED  = parseInt(value); break;
+        case "XP_PER_KILL":             CSMS_CONFIG.XP_PER_KILL             = parseInt(value); break;
+        case "XP_PER_ROLL_SUCCESS":     CSMS_CONFIG.XP_PER_ROLL_SUCCESS     = parseInt(value); break;
+        case "XP_PER_ROLL_FAIL":        CSMS_CONFIG.XP_PER_ROLL_FAIL        = parseInt(value); break;
+        case "PROFICIENCY_THRESHOLDS":
+          CSMS_CONFIG.PROFICIENCY_THRESHOLDS = value.split(",").map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+          break;
       }
     }
   }
@@ -479,6 +527,10 @@ function CSMS(hook)
         // Tie
         notify("Both rolls result a TIE");
         closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose} resulting a TIE.`;
+
+        // Tie — both rolled, both get roll XP
+        awardXP(cCharacter, CSMS_CONFIG.XP_PER_ROLL_SUCCESS);
+        awardXP(oCharacter, CSMS_CONFIG.XP_PER_ROLL_SUCCESS);
       }
       else if (cResult.total > oResult.total)
       {
@@ -487,8 +539,12 @@ function CSMS(hook)
         notify(
           `${caller}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${oppose}`, 
           `Damage roll: ${damage.breakDown}`);
+
         // Apply damage
-        const remainingHP = applyDamage(oCharacter, damage.total);       
+        const remainingHP = applyDamage(oCharacter, damage.total);
+
+        // AWard XP (caller win)
+        awardXPClassicRoll(cCharacter, oCharacter);
 
         // AI doesnt have to know full break down. Just who wins with what points and who left with what points.
         closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose}. ${caller} wins and ${damage.total} damage point applied to ${oppose}. ${oppose} left with ${remainingHP} HP.`;
@@ -500,8 +556,12 @@ function CSMS(hook)
         notify(
           `${oppose}'s Damage Roll: ${damage.breakDown}. ${damage.total} damage point applied to ${caller}`, 
           `Damage roll: ${damage.breakDown}`);
+
         // Apply damage
         const remainingHP = applyDamage(cCharacter, damage.total);
+
+        // AWard XP (oppose win)
+        awardXPClassicRoll(oCharacter, cCharacter)
 
         closureText = `${caller} rolled a ${cResult.total} against ${oResult.total} of ${oppose}. ${oppose} wins and ${damage.total} damage point applied to ${caller}. ${caller} left with ${remainingHP} HP.`;
       }
@@ -513,6 +573,9 @@ function CSMS(hook)
         `roll: ${cResult.breakDown}`
       );
       closureText = `${caller} rolled ${cResult.total} to ${action}.`;
+
+      // AWard XP (solo roll)
+      awardXPClassicRoll(cCharacter)
     }
 
     // Give instructions to player and GM
@@ -715,8 +778,10 @@ function CSMS(hook)
         wis: CSMS_CONFIG.DEFAULT_STAT,
         cha: CSMS_CONFIG.DEFAULT_STAT  
       },
-      inventory:  [],
-      ordinances: [],
+      inventory:      [],
+      ordinances:     [],
+      pendingDP:      0,
+      pendingLevelUp: false,
     };
   }
 
@@ -734,8 +799,8 @@ function CSMS(hook)
     return state.characters.find(c => c.isPlayer === true);
   }
 
-  // Find player that execute the action
-  function getActivePlayer()
+  // Find player that execute the action and return the character
+  function getCallerCharacter(inputText = text)
   {
     // Singleplayer — just return the player
     if (!info.characters || info.characters.length === 0)
@@ -744,10 +809,10 @@ function CSMS(hook)
     }
 
     // Multiplayer — detect from input text
-    const inputText = text.trim();
+    const input = inputText.trim();
     for (const charName of info.characters)
     {
-      if (inputText.indexOf(`> ${charName}`) !== -1)
+      if (input.indexOf(`> ${charName}`) !== -1)
       {
         return findCharacter(charName);
       }
@@ -868,6 +933,10 @@ function CSMS(hook)
         `sync errors: ${errors.join(" | ")}`);
     }
 
+    // Backward compatibilty
+    if (c.pendingDP === undefined) c.pendingDP = 0;
+    if (c.pendingLevelUp === undefined) c.pendingLevelUp = false;
+
     updateCharacterCard(c);
   }
 
@@ -887,8 +956,10 @@ function CSMS(hook)
 
     const cNotes = [
       `[Inventory]`,
+      `- `,
       ``,
-      `[Ordinances]`
+      `[Ordinances]`,
+      `- `
     ].join("\n");
 
     const cardTitle = `📋 ${c.name}`;
@@ -913,6 +984,95 @@ function CSMS(hook)
         description: cNotes
       });
     }
+  }
+
+  function updateNotesField(character)
+  {
+    const c = character;
+    const card = storyCards.find(card => card.title === `📋 ${c.name}`);
+    if (!card) return;
+
+    const inventoryLines = c.inventory.length > 0 ? c.inventory.map(i => `- ${i}`).join("\n") : `- `;
+    const ordinanceLines = c.ordinances.length > 0 ? c.ordinances.map(o => `- ${o}`).join("\n") : `- `;
+
+    card.description = `[Inventory]\n${inventoryLines}\n\n[Ordinances]\n${ordinanceLines}`;
+  }
+
+  // ==================
+  // LEVELING SYSTEM
+  // ==================
+
+  // Add cp to character
+  function awardXP(character, amount)
+  {
+    // Only when module is active
+    if (!CSMS_CONFIG.MODULES.LEVELING) return;
+    // Skip if amount is 0 (when some action deosnt give XP)
+    if (!amount || amount <= 0) return;
+    // Skip if reached max level
+    if (character.level >= CSMS_CONFIG.LEVEL_CAP) return;
+
+    // DEBUG
+    log(`awardXP: ${character.name} += ${amount} (was ${character.xp})`);
+
+    // Add amount to character XP
+    character.xp += amount;
+
+    // Enough to level up
+    if (character.xp >= CSMS_CONFIG.XP_THRESHOLD)
+    {
+      // Spilled xp stored
+      character.xp -= CSMS_CONFIG.XP_THRESHOLD;
+      character.pendingLevelUp = true;
+    }
+  }
+
+  function processLevelUp(character)
+  {
+    // DEBUG
+    log(`processLevelUp: ${character.name} pendingLevelUp=${character.pendingLevelUp} pendingDP=${character.pendingDP}`);
+
+    // Only for character pending leveling up
+    if (!character.pendingLevelUp) return;
+    // Stop if reached max level
+    if (character.level >= CSMS_CONFIG.LEVEL_CAP)
+    {
+      character.pendingLevelUp = false;
+      return;
+    }
+
+    // Increase the level if pass earlier checks
+    character.level          += 1;
+    // Reset flag
+    character.pendingLevelUp = false;
+
+    // HP Increase - current and max both go up
+    character.hp.max      += CSMS_CONFIG.HP_PER_LEVEL;
+    character.hp.current  += CSMS_CONFIG.HP_PER_LEVEL;
+
+    // Development Points
+    character.pendingDP   += CSMS_CONFIG.DP_PER_LEVEL;
+
+    // Proficiency bonus
+    if (CSMS_CONFIG.PROFICIENCY_THRESHOLDS.includes(character.level))
+    {
+      character.proficiencyBonus += 1;
+    }
+
+    // Update character card
+    updateCharacterCard(character);
+
+    // Notify player
+    notify(
+      `${character.name} reached Level ${character.level}!\n` +
+      `HP +${CSMS_CONFIG.HP_PER_LEVEL}. New max: ${character.hp.max}\n` +
+      `${character.name} has ${character.pendingDP} Development Point(s) available.` + 
+      (character.isPlayer ? `Use /csms dp/check to allocate.`: ``) +
+      (CSMS_CONFIG.PROFICIENCY_THRESHOLDS.includes(character.level)
+        ? `\nProficiency bonus increased to +${character.proficiencyBonus}!`
+        : ``),
+      `level up`
+    );
   }
 
   function removeCharacterCard(name)
@@ -1216,8 +1376,17 @@ function CSMS(hook)
           targetChar.hp.max
         );
 
-        if (dmgResult.target) applyDamage(targetChar, dmgResult.target.damage);
-        if (dmgResult.caller) applyDamage(callerChar, dmgResult.caller.damage);
+        // Apply damage
+        if (dmgResult.target)
+        {
+          applyDamage(targetChar, dmgResult.target.damage);
+          awardXPDamage(callerChar, targetChar);
+        } 
+        if (dmgResult.caller)
+        {
+          applyDamage(callerChar, dmgResult.caller.damage);
+          awardXPDamage(targetChar, callerChar);
+        }
       }
 
       state.csmsOrdinancePending = null;
@@ -1369,7 +1538,12 @@ function CSMS(hook)
 
     if (inventoryStart === -1)
     {
-      notify(`No [Inventory] block found for ${c.name}`, `inventory: no block found`);
+      // Auto repair — add missing blocks
+      const card = storyCards.find(card => card.title === `📋 ${c.name}`);
+      if (card)
+      {
+        card.description = `[Inventory]\n- \n\n[Ordinances]\n- `;
+      }
       return;
     }
 
@@ -1381,13 +1555,108 @@ function CSMS(hook)
     for (const line of lines)
     {
       const trimmed = line.trim();
-      if (trimmed.startsWith("- ")) items.push(trimmed.slice(2).trim());
+      if (trimmed.startsWith("- "))
+      {
+        const itemName = trimmed.slice(2).trim();
+        if (itemName) items.push(itemName);  // skip empty - 
+      }
     }
 
     c.inventory = items;
-    notify(
-    `Inventory synced for ${c.name}: ${items.length} item(s)`,
-    `inventory: synced ${items.length} items`);
+  }
+
+  // ==================
+  // ACTION HANDLER
+  // ==================
+
+  function takeItem(caller, item, receiver, originalText)
+  {
+    
+    const from = receiver ? findCharacter(receiver) : null;
+
+    if (from)
+    {
+      const idx = from.inventory.findIndex(i => i.toLowerCase() === item.toLowerCase());
+  
+      if (idx === -1)
+      {
+        text = originalText.replace(/iv_[^\n]*/i, `look for ${item} on ${from.name}, but cannot find it.`);
+
+        return true;
+      }
+      from.inventory.splice(idx, 1);
+      updateNotesField(from);
+    }
+
+    caller.inventory.push(item);
+    updateNotesField(caller);
+
+    return null;
+  }
+
+  function dropItem(caller, item, originalText)
+  {
+    const idx = caller.inventory.findIndex(i => i.toLowerCase() === item.toLowerCase());
+    
+    if (idx === -1)
+    {
+      text = originalText.replace(/iv_[^\n]*/i, `reach for ${item}, but realize it isn't there.`);
+
+      return true;
+    }
+    caller.inventory.splice(idx, 1);
+    updateNotesField(caller);
+
+    return null;
+  }
+
+  function giveItem(caller, item, receiver, originalText)
+  {
+    const idx = caller.inventory.findIndex(i => i.toLowerCase() === item.toLowerCase());
+    if (idx === -1)
+    {
+      text = originalText.replace(/iv_[^\n]*/i, `about to give something but realize that its nowhere to be found.`);
+
+      return true;
+    }
+
+    if (!receiver)
+    {
+      text = originalText.replace(/iv_[^\n]*/i, `look around, unsure who to give the ${item} to.`);
+
+      return true;
+    }
+
+    const to = findCharacter(receiver);
+    if (!to)
+    {
+      text = originalText.replace(/iv_[^\n]*/i, `look for someone to give the ${item} to, but cannot find them.`);
+
+      return true;
+    }
+
+    caller.inventory.splice(idx, 1);
+    to.inventory.push(item);
+    updateNotesField(caller);
+    updateNotesField(to);
+
+    return null;
+  }
+
+  function hurlItem(caller, item, receiver, originalText)
+  {
+    const idx = caller.inventory.findIndex(i => i.toLowerCase() === item.toLowerCase());
+    if (idx === -1)
+    {
+      text = originalText.replace(/iv_[^\n]*/i, `reach for ${item} to throw, but realize it isn't there.`);
+
+      return true;
+    }
+
+    caller.inventory.splice(idx, 1);
+    updateNotesField(caller);
+
+    return null;
   }
 
   // ==================
@@ -1450,7 +1719,7 @@ function CSMS(hook)
     }
     else
     {
-      character = getActivePlayer();
+      character = getCallerCharacter();
       if (!character)
       {
         return `No player character found. Use /csms create [name] first.`;
@@ -1476,7 +1745,7 @@ function CSMS(hook)
       }
     } else
     {
-      c = getActivePlayer();
+      c = getCallerCharacter();
       if (!c)
       {
         return `No player character found.`;
@@ -1623,6 +1892,9 @@ function CSMS(hook)
     // Validate target exist - only if provided
     const targetChar = targetName ? findCharacter(targetName) : null;
 
+    // Award XP for executing an Ordinance
+    awardXP(callerChar, CSMS_CONFIG.XP_PER_ORDINANCE);
+
     // All good - set pending state
     state.csmsOrdinancePending = 
     {
@@ -1642,13 +1914,273 @@ function CSMS(hook)
   // Updates Character Card Notes section by command
   function handleUpdateSheetNotes(name)
   {
-    const c = name ? findCharacter(name) : getActivePlayer();
+    const c = name ? findCharacter(name) : getCallerCharacter();
     if (!c) return `No character named ${name} found.`;
     
     parseInventory(c);
     parseOrdinances(c);
 
     return `${c.name}'s sheet notes synced.`;
+  }
+
+  // handle how script process the iv_action command
+  function handleInventoryCommand(ivText, originalText)
+  {
+    // Strip "iv_" prefix
+    const raw = ivText.slice(3).trim().toLowerCase();
+
+    // Detect action type
+    let action = null;
+    let matchedKeyword = null;
+
+    for (const [actionType, keywords] of Object.entries(CSMS_IV_KEYWORDS))
+    {
+      for (const keyword of keywords)
+      { 
+        if (raw.startsWith(keyword))
+        {
+          action = actionType;
+          matchedKeyword = keyword;
+
+          break;
+        }
+      }
+      if (action) break;
+    }
+
+    if (!action) return `Unknown inventory action. Use take, drop, give, or throw.`;
+
+    // Strip keyword from front
+    const restOriginal = raw.slice(matchedKeyword.length).trim();
+    const rest = restOriginal.toLowerCase();
+
+    // Get caller
+    const caller = getCallerCharacter(originalText);
+    if (!caller) return `No active player found.`;
+
+    // Parse item and receiver
+    // "contract to Barbara" → item: "contract", receiver: "Barbara"
+    // "knife" → item: "knife", receiver: null
+    const toMatch   = restOriginal.match(/^(.+?)\s+to\s+(.+)$/);
+    const atMatch   = restOriginal.match(/^(.+?)\s+at\s+(.+)$/);
+    const fromMatch = restOriginal.match(/^(.+?)\s+from\s+(.+)$/);
+
+    let item     = rest;
+    let receiver = null;
+
+    if (toMatch)
+    {
+      const possibleReceiver = toMatch[2].trim()
+        .replace(/[.,!?"]+$/, "")
+        .replace(/\s+(too|also|as well|instead|as well|either|then|now)$/i, "")
+        .trim();
+
+      item = toMatch[1];
+      receiver = findCharacter(possibleReceiver) ? possibleReceiver : null;
+    }
+    else if (atMatch)
+    {
+      const possibleReceiver = atMatch[2].trim()
+        .replace(/[.,!?"]+$/, "")
+        .replace(/\s+(too|also|as well|instead|as well|either|then|now)$/i, "")
+        .trim();
+
+      item = atMatch[1];
+      receiver = findCharacter(possibleReceiver) ? possibleReceiver : null;
+    }
+    else if (fromMatch)
+    {
+      const possibleReceiver = fromMatch[2].trim()
+      .replace(/[.,!?"]+$/, "")
+      .replace(/\s+(too|also|as well|instead|as well|either|then|now)$/i, "")
+      .trim();
+
+      item = fromMatch[1];
+      receiver = findCharacter(possibleReceiver) ? possibleReceiver : null;
+    }
+
+    // Strip articles AND possessives AND trailing punctuation
+    item = item.replace(/^(the|a|an|some|my|your|his|her|their)\s+/i, "").trim();
+    item = item.replace(/[.,!?"]+$/, "").trim();
+    item = item.replace(/^[a-zA-Z]+'s\s+/i, "").trim();
+    item = item.replace(/\s+(on|in|inside|onto|into|over|under|at|by|near|toward)\s+(the|a|an)?\s*\w+.*$/i, "").trim();
+
+    // Route to action handler
+    switch(action)
+    {
+      case "take": 
+        if (takeItem(caller, item, receiver, originalText)) return true; break;
+      case "drop": 
+        if (dropItem(caller, item, originalText)) return true; break;
+      case "give": 
+        if (giveItem(caller, item, receiver, originalText)) return true; break;
+      case "hurl": 
+        if (hurlItem(caller, item, receiver, originalText)) return true; break;
+    }
+
+    return null;
+  }
+
+  function handleDP(args, originalText)
+  {
+    const caller = getCallerCharacter(originalText);
+    if (!caller) return `No active player found.`;
+
+    // ---- CHECK ----
+    if (!args || args === "check")
+    {
+      // Not allocating any dp
+      return (
+        `${caller.name} — Development Points available: ${caller.pendingDP}\n\n` +
+        `Current stats:\n` +
+        `STR: ${caller.stats.str}/${CSMS_CONFIG.STAT_MAX}  DEX: ${caller.stats.dex}/${CSMS_CONFIG.STAT_MAX}  CON: ${caller.stats.con}/${CSMS_CONFIG.STAT_MAX}\n` +
+        `INT: ${caller.stats.int}/${CSMS_CONFIG.STAT_MAX}  WIS: ${caller.stats.wis}/${CSMS_CONFIG.STAT_MAX}  CHA: ${caller.stats.cha}/${CSMS_CONFIG.STAT_MAX}\n\n` +
+        `Allocating example: /csms dp/STR:2,INT:1,DEX:1\n\n` +
+        `Delete this response before continuing with the story.`
+      );
+    }
+
+    // Parse allocations - "STR: 2, INT:1, DEX:1"
+    const allocations = args.split(",").map(a => a.trim());
+    const changes     = {};
+    const warnings    = [];
+    let totalSpend    = 0;
+
+    for (const allocation of allocations)
+    {
+      // Find matching words
+      const match = allocation.match(/^\s*(STR|DEX|CON|INT|WIS|CHA)\s*:\s*(\d+)$/i);
+      // Push any invalid to warnings[]
+      if (!match)
+      {
+        warnings.push(`Invalid format: "${allocation}" — skipped. Use STAT:amount e.g. STR:2`);
+        continue;
+      }
+
+      // Matching and convert to int or repair negative int
+      const stat    = match[1].toLowerCase();
+      const amount  = Math.abs(parseInt(match[2]));
+      const current   = caller.stats[stat];
+
+      // Auto-repair over cap - apply what fits, refund the rest
+      const canAdd  = CSMS_CONFIG.STAT_MAX - current;
+      const applied = Math.min(amount, canAdd);
+      const refund  = amount - applied;
+
+      // Nothing can applied
+      if (applied === 0)
+      {
+        warnings.push(`${stat.toUpperCase()} already at cap (${CSMS_CONFIG.STAT_MAX}) — skipped.`);
+        continue;
+      }
+
+      // Refund available
+      if (refund > 0)
+      {
+        warnings.push(`${stat.toUpperCase()}: only +${applied} applied (cap reached). ${refund} point(s) refunded.`);
+      } 
+
+      changes[stat] = applied;
+      totalSpend   += applied;
+    }
+
+    // No valid changes (changes{} has no keys stored)
+    if (Object.keys(changes).length === 0)
+    {
+      return warnings.join("\n") + `\n\nDelete this response before continuing with the story.`;
+    }
+
+    // Overspend - first allocation get priority, stop when DP runs out
+    let dpRemaining     = caller.pendingDP;
+    const finalChanges  = {};
+
+    // Apply changes
+    for (const [stat, amount] of Object.entries(changes))
+    {
+      // Skip if not enough remaining DP
+      if (dpRemaining <= 0)
+      {
+        warnings.push(`${stat.toUpperCase()}: skipped — not enough Development Points remaining.`);
+        continue;
+      }
+
+      const canSpend       = Math.min(amount, dpRemaining);
+      const unfilledAmount = amount - canSpend;
+
+      // DP depleted and theres not enough to reach proposed amount
+      if (unfilledAmount > 0)
+      {
+        warnings.push(`${stat.toUpperCase()}: only +${canSpend} applied — not enough DP for full amount.`);
+      }
+
+      finalChanges[stat] = canSpend;
+      dpRemaining       -= canSpend;
+    }
+
+    // Apply final changes
+    for (const [stat, amount] of Object.entries(finalChanges))
+    {
+      caller.stats[stat] += amount;
+    }
+    caller.pendingDP = dpRemaining;
+
+    // Always update after changing
+    updateCharacterCard(caller);
+
+    const summary = Object.entries(finalChanges)
+      .map(([stat, amount]) => `${stat.toUpperCase()} +${amount}`)
+      .join(", ");
+
+    return (
+      `${caller.name} — Stats updated: ${summary}\n` +
+      `Remaining Development Points: ${caller.pendingDP}\n` +
+      (warnings.length > 0 ? `\nWarnings:\n${warnings.join("\n")}\n` : ``) + 
+      `\nDelete this response before continuing with the story.`
+    );
+  }
+
+  //--------------------------
+  // FRONT-END
+  //--------------------------
+
+  // To give XP every action called
+  function awardXPPerAction()
+  {
+    // Stop if module inactive
+    if (!CSMS_CONFIG.MODULES.LEVELING) return;
+
+    const actor = state.callerCharacter;
+    if (actor) 
+    {
+      awardXP(actor, CSMS_CONFIG.XP_PER_ACTION);
+      updateCharacterCard(actor);
+    }
+  }
+
+  // To give XP on classic dice rolls
+  function awardXPClassicRoll(winner, loser = null)
+  {
+    // Solo roll
+    if (!loser)
+    {
+      awardXP(winner, CSMS_CONFIG.XP_PER_ROLL_SUCCESS);
+      return;
+    } 
+
+    // winner xp inflicted dmg, loser xp received dmg
+    awardXPDamage(winner, loser);
+    
+    // Roll award
+    awardXP(winner, CSMS_CONFIG.XP_PER_ROLL_SUCCESS);
+    awardXP(loser, CSMS_CONFIG.XP_PER_ROLL_FAIL);  
+  };
+
+  // Give XP for every damage inflicted and received
+  function awardXPDamage(hitter, hitted)
+  {
+    awardXP(hitter, CSMS_CONFIG.XP_PER_HIT);
+    awardXP(hitted, CSMS_CONFIG.XP_PER_DAMAGE_RECEIVED);
+    if (hitted.hp.current <= 0) awardXP(hitter, CSMS_CONFIG.XP_PER_KILL);
   }
 
   //--------------------------
@@ -1669,13 +2201,14 @@ function CSMS(hook)
       case "update":
       if (args1 === "notes")    return handleUpdateSheetNotes(args2);
       if (args1 === "stats")    return handleSync(args2);
-      return `Unknown update target. Use "stats" or "inventory"`;
+      return `Unknown update target. Use "stats" or "notes"`;
       case "create":      return handleCreate(args1);
       case "check":       return handleStats(args1);
       case "reset":       return handleReset(args1);
       case "cleanup":     return handleCleanup();
       case "roll":        return handleRoll(args1, args2, args3);
       case "ordinance":   return handleOrdinance(args1,args2, args3);
+      case "dp":          return handleDP(args1, cText);
       case "test":        return handleTest();
       default:            return `Unknown CSMS command. "/csms help" for list of available commands`;
     }
@@ -1695,19 +2228,49 @@ function CSMS(hook)
 
   if (hook === "input")
   {
+    // Save original text
+    const originalText = text;
+
+    // Clear any stale DP output from previous action
+    state.pendingDPOutput = null;
+
+    // Save the caller in state
+    state.callerCharacter = getCallerCharacter(originalText) || null;
+    
     // Ensure it fires before any command
     initConfigCard();   // create card if missing
     parseConfigCard();  // read card, override config
+    
     // Zeor or one command, no more
-    const csmsMatch = text.match(/\/csms[^\n]*/i);
+    const csmsMatch = originalText.match(/\/csms[^\n]*/i);
 
     if (csmsMatch)
     {
       const result = parseCommand(csmsMatch[0].trim());
-      if (result) notify(result, result);
+
+      // DP command replaces AI response - dont notify
+      if (CSMS_CONFIG.MODULES.LEVELING && csmsMatch[0].toLowerCase().includes("/csms dp"))
+      {
+        state.pendingDPOutput = result;
+      }
+      else 
+      {
+        // Anything with notification goes here
+        if (result) notify(result, result);
       
-      // Replace raw commands with natural prose
-      processCommand(csmsMatch, result);
+        // Replace raw commands with natural prose
+        processCommand(csmsMatch, result);
+      }
+    }
+
+    // Inventory command
+    const ivMatch = originalText.match(/iv_[^\n]*/i);
+    if (ivMatch)
+    { 
+      const ivFailed = handleInventoryCommand(ivMatch[0].trim(), originalText);
+      
+      // If action success, remove the iv_ tag, unsuccessful case handled in each action
+      if (!ivFailed) text = originalText.replace(/iv_/i, "");
     }
   }
 
@@ -1719,6 +2282,7 @@ function CSMS(hook)
     state.characters.forEach(c =>
     {
       parseCharacterCard(c);
+      parseInventory(c);
       parseOrdinances(c);
     });
     
@@ -1732,9 +2296,31 @@ function CSMS(hook)
 
   if (hook === "output")
   {
+    if (CSMS_CONFIG.MODULES.LEVELING && state.pendingDPOutput)
+    {
+      text = state.pendingDPOutput;
+      state.pendingDPOutput = null;
+      return;
+    }
+
     generateNarrativeSheet();
     if (CSMS_CONFIG.MODULES.COMBAT) rollCheck();
     if (CSMS_CONFIG.MODULES.ORDINANCE) processOrdinanceTags();
+    
+    // Leveling last - after all XP sources has been fired
+    if (CSMS_CONFIG.MODULES.LEVELING)
+    {
+      // Award XP every action
+      awardXPPerAction();
+
+      state.characters.forEach(c => 
+      {
+        processLevelUp(c);
+        updateCharacterCard(c);
+      });
+    }
+
+    // Update must last to catch all notification
     updateNotification();
 
     text = text || " ";
