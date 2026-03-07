@@ -858,7 +858,7 @@ function CSMS(hook)
   }
 
   // Find player that execute the action and return the character
-  function getCallerCharacter(inputText = text)
+  function getCallerCharacter()
   {
     // Singleplayer — just return the player
     if (!info.characters || info.characters.length === 0)
@@ -867,17 +867,24 @@ function CSMS(hook)
     }
 
     // Multiplayer — detect from input text
-    const input = inputText.trim();
+    const input = (state.lastInput || "").trim();
+    
     for (const charName of info.characters)
     {
-      if (input.indexOf(`> ${charName}`) !== -1)
+      // Skip empty or banned names
+      if (!charName || charName.trim() === "") continue;
+      if (CSMS_CONFIG.BANNED_NAMES.some(b => b.toLocaleLowerCase() === charName.toLowerCase())) continue;
+
+      // Word boundary match - prevents partial name matches
+      if (input.match(new RegExp(`> ${charName}\\b`, `i`)))
       {
         return findCharacter(charName);
       }
     }
 
-    // Fallback
-    return getPlayer();
+    // Fallback — no caller detected
+    notify(`Could not determine caller. Make sure your character name is set correctly.`, `caller detection failed`);
+    return null;
   }
 
   // Remove ghost data and CS
@@ -2040,7 +2047,7 @@ function CSMS(hook)
     const rest = restOriginal.toLowerCase();
 
     // Get caller
-    const caller = getCallerCharacter(originalText);
+    const caller = getCallerCharacter();
     if (!caller) return `No active player found.`;
 
     // Parse item and receiver
@@ -2108,7 +2115,7 @@ function CSMS(hook)
 
   function handleDP(args, originalText)
   {
-    const caller = getCallerCharacter(originalText);
+    const caller = getCallerCharacter();
     if (!caller) return `No active player found.`;
 
     // ---- CHECK ----
@@ -2313,14 +2320,17 @@ function CSMS(hook)
 
   if (hook === "input")
   {
-    // Save original text
+    // Save original text for read-only, since text get mutated (like a lot here 😏)
     const originalText = text;
+
+    // Store it globally like how text was. No need to pass it everywhere
+    state.lastInput = originalText;
 
     // Clear any stale DP output from previous action
     state.pendingDPOutput = null;
 
     // Save the caller in state
-    state.callerCharacter = getCallerCharacter(originalText) || null;
+    state.callerCharacter = getCallerCharacter() || null;
     
     // Ensure it fires before any command
     initConfigCard();   // create card if missing
