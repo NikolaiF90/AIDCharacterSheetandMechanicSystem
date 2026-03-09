@@ -1705,13 +1705,12 @@ function CSMS(hook)
       if (!isDamaging && !isNonDamaging)
       {
         // Both do not exist
-        notify(
-          `${CSMS_CONFIG.ORD_ERROR}Step 1 failed - AI failed to detect DAMAGING or NON DAMAGING.\nOrdinance "${pending.ordinanceName}" has been cancelled.`,
-          `ordinance step 1: unexpected response`
-        );
         
+        setText(
+          `OOC: ${CSMS_CONFIG.ORD_ERROR}Step 1 failed - AI failed to detect DAMAGING or NON DAMAGING.\n` + 
+          `Ordinance "${pending.ordinanceName}" has been cancelled.\n` +
+          `Clear everything including your input and try again.`);
         clearPending("ordinance");
-        setText("OOC: Clear everything including your input and try again.");
 
         return;
       }
@@ -1719,7 +1718,7 @@ function CSMS(hook)
       pending.type = isDamaging ? "DAMAGING" : "NONDAMAGING";
       pending.step = 2;
       // Strip everything. Step 2 instruction injects on next action
-      setText(`[Ordinance "${pending.ordinanceName}" is being prepared. Press Continue to proceed.]\n`);
+      setText(`OOC: Ordinance "${pending.ordinanceName}" is being prepared. Press Continue to proceed.\n`);
 
       return;
     }
@@ -1735,10 +1734,7 @@ function CSMS(hook)
 
       if (!notationMatch)
       {
-        notify(
-          `No roll notation found - using default: 1d${CSMS_CONFIG.DAMAGE_DIE}`,
-          `ordinance step 2: using default notation`
-        );
+        setText(`OOC: No roll notation found - using default: 1d${CSMS_CONFIG.DAMAGE_DIE}`);
       }
 
       // Roll for it... 😏
@@ -1747,13 +1743,8 @@ function CSMS(hook)
       pending.notation = resolvedNotation;
       pending.rollResult = rollResult;
 
-      notify(
-        `${pending.caller} rolls for "${pending.ordinanceName}": ${rollResult.breakDown}`,
-        `ordinance roll: ${rollResult.breakDown}`
-      );
-
       pending.step = 3;
-      setText(`[Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.]\n\n`);
+      setText(`OOC: Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.\n\n`);
 
       return;
     }
@@ -1800,11 +1791,11 @@ function CSMS(hook)
 
       if (!needsRoll && !isNarrative)
       {
-        notify(
-          `${CSMS_CONFIG.ORD_ERROR}Step 2 failed — AI did not return ROLL or NARRATIVE.\nOrdinance "${pending.ordinanceName}" has been cancelled.`,
-          `ordinance step 2 nondamaging: unexpected response`);
+        setText(
+          `OOC: ${CSMS_CONFIG.ORD_ERROR}Step 2 failed — AI did not return ROLL or NARRATIVE.\n` + 
+          `Ordinance "${pending.ordinanceName}" has been cancelled.\n`
+          `Clear everything including your input and try again.`);
         clearPending("ordinance");
-        setText("OOC: Clear everything including your input and try again.");
         
         return;
       }
@@ -1812,13 +1803,13 @@ function CSMS(hook)
       if (isNarrative)
       {
         pending.step = "3-ND";
-        setText(`[Ordinance "${pending.ordinanceName}" — no roll needed. Press Continue to resolve.]\n`);
+        setText(`OOC: Ordinance "${pending.ordinanceName}" — no roll needed. Press Continue to resolve.\n\n`);
 
         return;
       }
 
       pending.step = "2-B";
-      setText(`[Ordinance "${pending.ordinanceName}" — a roll will determine the outcome. Press Continue.]\n`);
+      setText(`OOC: Ordinance "${pending.ordinanceName}" — a roll will determine the outcome. Press Continue.\n`);
 
       return;
     }
@@ -1832,9 +1823,8 @@ function CSMS(hook)
 
       if (!notationMatch)
       {
-        notify(
-          `No roll notation provided — using default: ${CSMS_CONFIG.ORD_DEFAULT_ROLL}`,
-          `ordinance step 2-B: using default notation`);
+        setText(
+          `OOC: No roll notation provided — using default: ${CSMS_CONFIG.ORD_DEFAULT_ROLL}`);
       }
 
       const callerChar = findCharacter(state.csmsPending.ordinance.caller);
@@ -1843,12 +1833,9 @@ function CSMS(hook)
       pending.notation   = resolvedNotation;
       pending.rollResult = rollResult;
 
-      notify(
-        `${pending.caller} rolls for "${pending.ordinanceName}": ${rollResult.breakDown}`,
-        `ordinance roll: ${rollResult.breakDown}`);
-
       pending.step = "3-ND";
-      setText(`\n[Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.]\n\n`);
+      addToTextText(`\nOOC: Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.\n\n`);
+
       return;
     }
 
@@ -1919,16 +1906,29 @@ function CSMS(hook)
       debugLog("injectOrdinanceCheck", `step 2-B injection: ${text.slice(-200)}`);
     }
 
+    if (step === 3)
+    {
+      addToText(
+        `\n\n` + 
+        `\nORDINANCE:${pending.ordinanceName}` +
+        `\nrules: ${pending.entry}` +
+        `\n\n## Continue the story. Narrate the outcome of ${pending.caller} using "${pending.ordinanceName}"${pending.target ? ` against ${pending.target}` : ""}.`
+      );
+    }
+
     if (step === "3-ND")
     {
       debugLog("injectOrdinanceCheck", `injecting step 3 non damaging...`);
       const rollLine = pending.rollResult
         ? `Roll result: ${pending.rollResult.total} (${pending.rollResult.breakDown}).`
         : "";
-
+      
       addToText(
-        `${rollLine}\n` +
-        `## Continue the story. Narrate the outcome of ${pending.caller} using "${pending.ordinanceName}"${pending.target ? ` against ${pending.target}` : ""}.`
+        `${rollLine}` +
+        `\n\n` + 
+        `\nORDINANCE:${pending.ordinanceName}` +
+        `\nrules: ${pending.entry}` +
+        `\n\n## Continue the story. Narrate the outcome of ${pending.caller} using "${pending.ordinanceName}"${pending.target ? ` against ${pending.target}` : ""}.`
       );
     }
     debugLog("injectOrdinanceCheck", `injecting success. returning...`);
