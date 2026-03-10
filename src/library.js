@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v1.10.0b by PrinceF90
+// v2.0.0b by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
@@ -531,29 +531,6 @@ function CSMS(hook)
   if (state.characters === undefined)
   {
     state.characters = [];
-  }
-
-  // Create CS for new player
-  if (info.characters && info.characters.length > 0)
-  {
-    info.characters.forEach(charName =>
-    {
-      if (!charName || charName.trim() === "") return;
-      // Skip banned names
-      if (CSMS_CONFIG.BANNED_NAMES.indexOf(charName.toLowerCase()) !== -1) return;
-
-      // Skip if already exists
-      if (findCharacter(charName)) return;
-
-      // First character created is the player
-      const isFirstPlayer = state.characters.length === 0;
-      const character = initCharacter(charName, isFirstPlayer, true);
-      state.characters.push(character);
-      updateCharacterCard(character);
-      notify(
-        `Character sheet auto-created for ${charName}`, 
-        `auto-created: ${charName}`);
-    });
   }
 
   // Always check for ghost
@@ -1148,6 +1125,32 @@ function CSMS(hook)
     };
   }
 
+  // Create CS for new player
+  function createMultiplayerSheet()
+  {
+    if (info.characters && info.characters.length > 0)
+    {
+      info.characters.forEach(charName =>
+      {
+        if (!charName || charName.trim() === "") return;
+        // Skip banned names
+        if (CSMS_CONFIG.BANNED_NAMES.indexOf(charName.toLowerCase()) !== -1) return;
+
+        // Skip if already exists
+        if (findCharacter(charName)) return;
+
+        // First character created is the player
+        const isFirstPlayer = state.characters.length === 0;
+        const character = initCharacter(charName, isFirstPlayer, true);
+        state.characters.push(character);
+        updateCharacterCard(character);
+        notify(
+          `Character sheet auto-created for ${charName}`, 
+          `auto-created: ${charName}`);
+      });
+    }
+  }
+
   // Find any character from global namespace by name
   function findCharacter(name)
   {
@@ -1182,29 +1185,69 @@ function CSMS(hook)
     return null;
   }
 
-  // Remove ghost data and CS
   function syncMultiplayerCharacters()
   {
-    if (!info.characters || info.characters.length === 0) return;
+    if (!isMultiplayer()) return;
 
-    // Find state characters that are multiplayer but no longer in info.characters
-    const toRemove = state.characters.filter(c =>
-      c.isMultiplayerCharacter === true &&
-      info.characters.indexOf(c.name) === -1
+    // Build mapper — non-You, non-empty, non-banned names from info.characters
+    const mapper = info.characters.filter(name =>
+      name && name.trim() !== "" &&
+      !CSMS_CONFIG.BANNED_NAMES.some(b => b.toLowerCase() === name.toLowerCase())
     );
+    debugLog("syncMultiplayer", `mapper: ${JSON.stringify(mapper)}`);
+    debugLog("syncMultiplayer", `seats: ${JSON.stringify(state.csmsPlayers)}`);
 
-    toRemove.forEach(c =>
+    // Initialize seats if empty
+    if (!state.csmsPlayers) state.csmsPlayers = [];
+    if (state.csmsPlayers.length === 0 && state.characters.length > 0)
     {
-      const index = state.characters.indexOf(c);
-      state.characters.splice(index, 1);
+      state.csmsPlayers = mapper.map(name => {
+        const found = findCharacter(name);
+        return found ? found.name : null;
+      }).filter(Boolean);
+      debugLog("syncMultiplayer", `seats seeded: ${JSON.stringify(state.csmsPlayers)}`);
+      
+      return; // skip this action, compare next action
+    }
 
-      // Delete
-      setCharacterSheet(c.name, undefined, undefined, undefined, true);
+    // Pass 1 — compare mapper vs seats
+    mapper.forEach((mappedName, mapID) =>
+    {
+      const currentSeatName = state.csmsPlayers[mapID];
+      if (!currentSeatName || mappedName === currentSeatName) return;
 
-      notify(
-        `Character sheet removed for ${c.name} (left or renamed).`, 
-        `removed: ${c.name}`);
+      // Mismatch — search seats for mappedName
+      const foundSeat = state.csmsPlayers.indexOf(mappedName);
+
+      if (foundSeat !== -1)
+      {
+        // Found elsewhere — player left, seat shifted (future)
+      }
+      else
+      {
+        // Not found — player renamed
+        const character = findCharacter(currentSeatName);
+        if (character)
+        {
+          const oldName = character.name;
+          character.name = mappedName;
+          
+          setCharacterSheet(mappedName, undefined, undefined, undefined, false);
+          setCharacterSheet(oldName, undefined, undefined, undefined, true);
+          
+          updateCharacterCard(character);
+          
+          notify(`${oldName} renamed to ${mappedName}`, `rename: ${oldName} → ${mappedName}`);
+
+        }
+        state.csmsPlayers[mapID] = mappedName;
+      }
     });
+
+    // Pass 2 — new players (future)
+
+    // Update mapper for next action
+    state.csmsPlayersMap = mapper;
   }
 
   // ==================
@@ -2714,10 +2757,15 @@ function CSMS(hook)
     // Init debug system
     initDebugCard();
 
+    // Check for renames
+    syncMultiplayerCharacters();
+    // Create sheet for multiplayer
+    createMultiplayerSheet();
+    
     // Run any commands on debug card
     processDebugCommands();
-
-    debugLog("getCallerCharacter", `info.characters: ${JSON.stringify(info.characters)}`);
+    
+    debugLog("context", `info.characters: ${JSON.stringify(info.characters)}`);
 
     state.characters.forEach(c =>
     {
@@ -2727,7 +2775,6 @@ function CSMS(hook)
     });
     
     injectActiveCharacters();
-    syncMultiplayerCharacters();
     processTaggedCards();
 
     if (CSMS_CONFIG.MODULES.COMBAT) injectStatCheck();
