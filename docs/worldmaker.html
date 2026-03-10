@@ -12,7 +12,6 @@
 
   <div class="noise"></div>
 
-
   <div class="page-header">
     <div class="container">
       <div class="section-tag">Documentation</div>
@@ -24,162 +23,144 @@
   <div class="content-body">
 
     <h2>Installation</h2>
-    <p>CSMS lives entirely in your scenario's script tabs. There are no external dependencies and nothing to install.</p>
+    <p>CSMS lives entirely in your scenario's script tabs. No external dependencies, nothing to install.</p>
 
-    <h3>Step 1 — Copy the Library</h3>
-    <p>Go to the <a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem" target="_blank">GitHub repository</a> and open <code>src/library.js</code>. Copy the entire file contents.</p>
-    <p>In your scenario editor, go to <strong>Scripts → Library</strong> and paste everything there.</p>
-
-    <h3>Step 2 — Input Tab</h3>
-    <pre><code>CSMS("input");
-const modifier = (text) => { return { text } };
-modifier(text)</code></pre>
-
-    <h3>Step 3 — Context Tab</h3>
-    <pre><code>CSMS("context");
-const modifier = (text) => { return { text, stop } };
-modifier(text)</code></pre>
-
-    <h3>Step 4 — Output Tab</h3>
-    <pre><code>CSMS("output");
-const modifier = (text) => { return { text } };
-modifier(text)</code></pre>
+    <h3>Step 1 — Copy the scripts</h3>
+    <p>Open each file from the GitHub repo and paste into the matching tab in your scenario editor:</p>
+    <ul>
+      <li><a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/blob/main/src/library.js" target="_blank"><code>library.js</code></a> → <strong>Library</strong> tab</li>
+      <li><a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/blob/main/src/input.js" target="_blank"><code>input.js</code></a> → <strong>Input</strong> tab</li>
+      <li><a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/blob/main/src/context.js" target="_blank"><code>context.js</code></a> → <strong>Context</strong> tab</li>
+      <li><a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/blob/main/src/output.js" target="_blank"><code>output.js</code></a> → <strong>Output</strong> tab</li>
+    </ul>
 
     <div class="tip-box">
-      <strong>Using other scripts too?</strong> Place <code>CSMS("input")</code> before your other script calls. Same for context and output. CSMS is designed to coexist with Inner Self, Auto-Cards, and others.
+      <strong>Using other scripts too?</strong> Paste CSMS calls before your other script calls in each tab. CSMS is designed to coexist with Inner Self, Auto-Cards, and others.
     </div>
 
     <h2>Configuration</h2>
-    <p>CSMS has two ways to configure it. The script-level config at the top of <code>library.js</code> sets your defaults. The <strong>⚙️ CSMS CFG</strong> story card lets you override values live in-game without touching the script.</p>
+    <p>CSMS auto-creates a <strong>⚙️ CSMS CFG</strong> story card on first action. All configuration lives in its Notes field — edit it anytime, changes take effect on the next action. No script editing required.</p>
 
-    <h3>Config Card (Recommended)</h3>
-    <p>On first action, CSMS auto-creates a <code>⚙️ CSMS CFG</code> story card. Edit its Notes field to override any config value mid-adventure — changes take effect on the next action. This is the recommended way to tune your scenario without touching the script.</p>
+    <h3>Pre-creating the CFG card</h3>
+    <p>You don't have to wait for first action. Create the card yourself before publishing so it's ready to go:</p>
+    <ol>
+      <li>Create a new story card in your scenario</li>
+      <li>Set <strong>Name</strong> to exactly: <code>⚙️ CSMS CFG</code></li>
+      <li>Set <strong>Type</strong> to <code>Other</code></li>
+      <li>Leave <strong>Entry</strong> empty or add a note for yourself</li>
+      <li>Paste the template below into the <strong>Notes</strong> field</li>
+    </ol>
 
-    <h3>Script Config</h3>
-    <pre><code>const CSMS_CONFIG =
-{
-  MODULES:
-  {
-    CHARACTER_SHEETS: true,
-    COMBAT:           true,
-    ORDINANCE:        true,
-    INVENTORY:        true,
-    LEVELING:         true,
-  },
-
-  STAT_MAX:    50,
-  STAT_MIN:    1,
-  AVERAGE_STAT: 10,       // modifier baseline (D&D 5e formula)
-  DEFAULT_STAT: 10,
-  DEFAULT_HP:   10,
-  DEFAULT_AC:   10,
-  DEFAULT_SPEED: 30,
-
-  LEVEL_CAP:    50,
-  XP_THRESHOLD: 100,      // XP required per level
-  HP_PER_LEVEL: 2,
-  DP_PER_LEVEL: 3,
-  PROFICIENCY_THRESHOLDS: "5,9,13,17", // levels where proficiency increases
-
-  REST_HEAL_PERCENT:    30,
-  CONSUME_HEAL_PERCENT: 10,
-  XP_PER_LEARN:         5,
-
-  LOOKBACK_ACTIONS:   5,
-  INJECTED_SHEET_MAX: 20,
-  PENDING_EXPIRY:     5,
-
-  AUTO_GENERATION_TAG: "[CSMS]",
-  BANNED_NAMES: ["you", "adventurer"],
-}</code></pre>
+    <pre><code>MODULE_CHARACTER_SHEETS: true
+MODULE_COMBAT: true
+MODULE_ORDINANCE: true
+MODULE_INVENTORY: true
+MODULE_LEVELING: true
+DEBUG_MODE: false
+STAT_MAX: 50
+STAT_MIN: 1
+AVERAGE_STAT: 10
+DEFAULT_STAT: 10
+DEFAULT_HP: 10
+DEFAULT_AC: 10
+DEFAULT_SPEED: 30
+DAMAGE_DIE: 6
+REST_HEAL_PERCENT: 10
+CONSUME_HEAL_PERCENT: 10
+LOOKBACK_ACTIONS: 5
+INJECTED_SHEET_MAX: 20
+PENDING EXPIRY: 3
+ORD_PROXIMITY: 50
+ORD_DEFAULT_ROLL: 1d20
+ORD_ND_DAMAGE_DETECTION: false
+LEVEL_CAP: 50
+XP_THRESHOLD: 100
+HP_PER_LEVEL: 10
+DP_PER_LEVEL: 3
+XP_PER_ACTION: 1
+XP_PER_ORDINANCE: 5
+XP_PER_HIT: 3
+XP_PER_DAMAGE_RECEIVED: 2
+XP_PER_KILL: 10
+XP_PER_ROLL_SUCCESS: 3
+XP_PER_ROLL_FAIL: 1
+XP_PER_LEARN: 5
+PROFICIENCY_THRESHOLDS: 4,8,12,16,20,28,36,44,50
+DEBUG_MAX_LINES: 50</code></pre>
 
     <div class="tip-box">
-      <strong>Missing keys auto-repair.</strong> If you load CSMS into an existing adventure, any new config keys are automatically appended to your ⚙️ CSMS CFG card with script defaults. You never need to manually migrate config.
+      <strong>Missing keys auto-repair.</strong> If you add CSMS to an existing adventure, any missing config keys are automatically appended to your CFG card with script defaults. No manual migration needed.
     </div>
 
     <h2>The Tag System</h2>
-    <p>This is CSMS's most powerful feature for world makers. Instead of manually assigning stats, you let the AI read your character descriptions and determine appropriate values automatically.</p>
+    <p>Instead of manually assigning stats, let the AI read your character descriptions and generate sheets automatically. Add <code>[CSMS]</code> to the beginning of any story card title:</p>
 
-    <h3>How to use it</h3>
-    <p>Add <code>[CSMS]</code> to the beginning of any story card title:</p>
+    <pre><code>Name:     [CSMS] Mira
+Type:     Character
+Entry:    Mira is a battle-hardened mercenary with fifteen years
+          of combat experience. She's exceptionally fast and
+          agile, relying on speed over brute strength. Her body
+          is lean and scarred. She's seen enough death to be
+          completely unshakeable under pressure.
+Triggers: Mira, mercenary</code></pre>
 
-    <pre><code>Title:  [CSMS] Mira
-Keys:   Mira, mercenary
-Entry:  Mira is a battle-hardened mercenary with fifteen years
-        of combat experience. She's exceptionally fast and
-        agile, relying on speed over brute strength. Her body
-        is lean and scarred. She's seen enough death to be
-        completely unshakeable under pressure.</code></pre>
-
-    <p>When <em>Mira</em> appears in the story, CSMS will:</p>
-    <ul>
-      <li>Read your card entry</li>
-      <li>Ask the AI to determine appropriate D&D 5e stats</li>
-      <li>Create a proper <code>📋 Mira</code> character sheet</li>
-      <li>Remove the <code>[CSMS]</code> tag from your original card</li>
-    </ul>
-
-    <p>Your original card stays intact. The sheet is separate.</p>
+    <p>When <em>Mira</em> appears in the story, CSMS will read the entry, ask the AI to determine appropriate stats, create a <code>📋 Mira</code> sheet, and remove the tag from your original card. Your lore card stays intact.</p>
 
     <div class="tip-box">
-      <strong>Write rich descriptions.</strong> The better your entry, the more accurate the AI's stat choices. Mention physical traits, personality, skills, and history. "Fast and agile" → high DEX. "Unshakeable under pressure" → high WIS. The AI reads it all.
+      <strong>Write rich descriptions.</strong> The better your entry, the more accurate the AI's stat choices. "Fast and agile" → high DEX. "Unshakeable under pressure" → high WIS. Physical traits, history, personality — the AI reads it all.
     </div>
 
     <h3>Works with Auto-Cards</h3>
-    <p>If you use LewdLeah's Auto-Cards, you can tag AC-generated cards too. Once AC creates a card for a character, just add <code>[CSMS]</code> to the title and CSMS will handle the rest.</p>
+    <p>Using LewdLeah's Auto-Cards? Once AC creates a card for a character, add <code>[CSMS]</code> to its title and CSMS generates the sheet automatically.</p>
 
     <h3>Processing order</h3>
-    <p>If multiple characters need sheets generated at the same time, CSMS processes one per action. This is intentional — the AI needs to respond with stats before the next character can be processed. A party of 5 unknown characters takes 5 consecutive actions to fully generate. This only happens once per character.</p>
+    <p>CSMS processes one tagged card per action — the AI needs to respond with stats before the next character can be processed. A party of 5 unknown characters takes 5 consecutive actions to fully generate. This only happens once per character.</p>
 
     <h2>Multiplayer Setup</h2>
-    <p>CSMS handles multiplayer automatically with no extra configuration. When players join, their sheets are created immediately.</p>
+    <p>CSMS handles multiplayer automatically. Sheet creation is tied to player names — a sheet is created for anyone whose name isn't "You" or a banned name. This works in both single player and multiplayer.</p>
 
-    <h3>Required: Third Person plot component</h3>
-    <p>For multiplayer to work correctly, add the <strong>Third Person</strong> plot component to your scenario. This switches player input from <code>&gt; You</code> to <code>&gt; PlayerName</code>, which allows CSMS to detect which player is acting.</p>
-
-    <p>Without Third Person, all players appear as "You" and CSMS can't tell them apart.</p>
+    <h3>Recommended: Third Person plot component</h3>
+    <p>Add the <strong>Third Person</strong> plot component to your scenario. This switches player input from <code>&gt; You</code> to <code>&gt; PlayerName</code>, which lets CSMS detect which player is currently acting — essential for accurate combat, rolls, and Ordinance attribution in multiplayer.</p>
+    <p>Without Third Person, CSMS can still track sheets — but in multiplayer it won't be able to tell which player's action to assign mechanics to.</p>
 
     <h3>What happens automatically</h3>
     <ul>
-      <li>Sheet created when player renames themselves from "You" to their character name</li>
+      <li>Sheet created when player sets their name — via the fire icon menu, top left of the screen</li>
       <li>Sheet renames automatically if player changes their name mid-session — all data preserved</li>
-      <li><code>/csms stats</code> and <code>/csms sync</code> with no name always affect the active player</li>
-      <li>Names in your <code>BANNED_NAMES</code> config are silently skipped</li>
+      <li>Names in <code>BANNED_NAMES</code> are silently skipped</li>
     </ul>
 
     <div class="warning-box">
-      <strong>Remind players to set their name.</strong> All players default to "You" when joining. They need to click their name in the game menu and set it before their sheet can be created. "You" is in the banned names list by default.
+      <strong>Remind players to set their name.</strong> All players default to "You" on join. They need to tap the fire icon and set their name before their sheet is created. "You" is banned by default.
     </div>
 
+    <h2>Player Name Tips</h2>
+    <p>Full names with spaces work — <code>/csms create/John Smith</code> creates a character named John Smith. Just remind players to be consistent — the name used in commands must match exactly (case insensitive) every time.</p>
+
     <h2>Stat Ranges</h2>
-    <p>By default, stats can be set between 1 and 50. This is intentionally wider than classic D&D (where 20 is the typical cap) to give world makers more flexibility. A godlike character at 50 STR behaves very differently from a peak human at 20.</p>
-    <p>Adjust <code>STAT_MIN</code> and <code>STAT_MAX</code> in <code>CSMS_CONFIG</code> to fit your scenario's power level.</p>
+    <p>Default range is 1–50. This is intentionally wider than classic D&D to give world makers more flexibility. Adjust <code>STAT_MIN</code> and <code>STAT_MAX</code> in the config card to fit your scenario's power level.</p>
 
     <h2>AI Context Injection</h2>
-    <p>On every action, CSMS injects a compact summary of relevant character stats directly into what the AI sees. It looks like this (invisible to players):</p>
+    <p>Every action, CSMS injects a compact character summary into what the AI sees — invisible to players:</p>
     <pre><code>[CSMS|Nikolai|HP:18/20|AC:15|STR:15|DEX:12|CON:14|INT:10|WIS:11|CHA:13]
 [CSMS|Mira|HP:10/10|AC:12|STR:12|DEX:18|CON:13|INT:10|WIS:16|CHA:9]</code></pre>
-
-    <p>Only characters mentioned in the last <code>LOOKBACK_ACTIONS</code> actions are injected, plus the player character always. This keeps token usage efficient even with large casts.</p>
-
-    <h2>Banned Names</h2>
-    <p>The <code>BANNED_NAMES</code> list prevents certain names from being used as character names. Default banned names are <code>"you"</code> and <code>"adventurer"</code>.</p>
-    <p>Add any names that would conflict with your scenario:</p>
-    <pre><code>BANNED_NAMES: ["you", "adventurer", "narrator", "gm"],</code></pre>
+    <p>Only characters mentioned in the last <code>LOOKBACK_ACTIONS</code> actions are injected, plus the player always. Keeps token usage efficient even with large casts.</p>
 
     <h2>Compatibility Notes</h2>
 
-    <h3>Inner Self (LewdLeah)</h3>
-    <p>Fully compatible. CSMS uses the same architecture pattern as Inner Self. Run them in the same script tabs — CSMS first, then IS.</p>
+    <h3>Inner Self (LewdLeah) ✓ Compatible</h3>
+    <p>CSMS mirrors IS architecture. Both use <code>storyCards</code> directly and namespace their state keys. Run CSMS first, then IS in each tab. They coexist cleanly.</p>
 
-    <h3>Auto-Cards (LewdLeah)</h3>
-    <p>Compatible. CSMS card keys use the <code>csms_cs_</code> prefix to avoid keyword conflicts with AC. The tag system is designed to work alongside AC-generated cards.</p>
+    <h3>Auto-Cards (LewdLeah) ✓ Compatible</h3>
+    <p>CSMS uses the <code>csms_cs_</code> key prefix to avoid keyword conflicts. The tag system is designed to work alongside AC-generated cards — AC creates the card, world maker adds <code>[CSMS]</code>, CSMS generates the sheet.</p>
 
-    <h3>Other scripts</h3>
-    <p>CSMS namespaces everything under <code>state.characters</code> and <code>state.notifyMessages</code>. As long as other scripts don't use those same state keys, there should be no conflict.</p>
+    <h3>LoLa — Localized Language (LewdLeah) ✗ Incompatible</h3>
+    <p>LoLa overrides AI output language and format. CSMS depends heavily on parsing specific AI response patterns — roll notations, stat blocks, ordinance keywords. Any script that changes what the AI writes will break CSMS parsing.</p>
+
+    <h3>General rule</h3>
+    <p>Anything that changes what the AI writes is incompatible with CSMS. Scripts that only modify <code>state</code>, inject into <code>frontMemory</code>, or read cards without altering output are generally safe.</p>
 
   </div>
-
 
   <script src="components.js"></script>
 </body>
