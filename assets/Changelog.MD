@@ -1,5 +1,79 @@
 # Changelog
 
+## v2.0.0 — Combat, Progression & Action System
+*March 2026*
+
+A major milestone. CSMS now has a full progression loop, a complete action system, reliable multiplayer detection, and a proper debug toolchain. Characters grow, heal, learn, and fight with mechanical weight.
+
+### For Players
+**Progression**
+- Characters now gain XP and level up through play — no manual tracking needed
+- XP awarded automatically for actions, rolls, combat, ordinances, learning, and killing blows
+- On level up — max HP increases and Development Points (DP) are awarded
+- Use `/csms dp/check` to see available DP and current stats
+- Use `/csms dp/STR:2,INT:1` to spend DP across stats in one command — you choose how your character grows
+- Unspent DP carries over — no pressure to spend immediately
+- NPCs level up too — the world grows with you
+
+**Actions**
+- `act_rest` — rest to recover HP. Just type it naturally in your input
+- `act_eat`, `act_drink`, `act_consume` — consume something to restore HP
+- `act_read`, `act_study`, `act_observe` — learn something to gain XP
+- All actions are natural — no rigid syntax, just describe what you do
+
+**Combat**
+- Opposed rolls now supported — `/csms roll vs Name` rolls both sides, higher wins, damage applied automatically
+- Ordinances now follow their written rules — AI narrates based on the actual card entry, not just the name
+
+**Multiplayer**
+- Player sheet auto-creates when you rename yourself — no `/csms create` needed
+- Renaming mid-session preserves all stats, XP, inventory, ordinances — sheet renames automatically
+- Multiplayer detection overhauled — no more false detection when Third-Person is removed
+
+**Commands**
+- `/csms reset/pending` — stuck in a broken state? Clear all pending processes instantly
+- `/csms reset/character/Name` — remove a specific character sheet
+
+### For World Makers
+**New Config Keys**
+- `MODULE_LEVELING: true/false` — toggle leveling system
+- `LEVEL_CAP` — max level, default 50
+- `XP_THRESHOLD` — XP required per level, you set the pace
+- `HP_PER_LEVEL` — max HP gained on level up
+- `DP_PER_LEVEL` — Development Points awarded per level
+- `PROFICIENCY_THRESHOLDS` — comma separated levels where proficiency bonus increases
+- `XP_PER_ACTION`, `XP_PER_ORDINANCE`, `XP_PER_HIT`, `XP_PER_KILL`, `XP_PER_ROLL_SUCCESS`, `XP_PER_ROLL_FAIL`, `XP_PER_DAMAGE_RECEIVED` — all XP sources individually configurable. Set any to 0 to disable
+- `REST_HEAL_PERCENT` — HP recovered per rest action
+- `CONSUME_HEAL_PERCENT` — HP recovered per consume action
+- `XP_PER_LEARN` — XP awarded per learn action
+- `PENDING_EXPIRY` — actions before stale pending state auto-clears
+- `DEBUG_MAX_LINES` — max lines in debug card before trimming
+- All new keys auto-added to `⚙️ CSMS CFG` card on first action — existing adventures update automatically
+
+**Debug UI**
+- `🔧 CSMS DEBUG` story card — persistent log visible in game. Enable via `DEBUG_MODE: true` in config card
+- Debug card commands: `CLEAR_LOG`, `CLEAR:ordinance`, `CLEAR:roll`, `SET:path=value`
+
+### Bug Fixes
+- Ordinance AI now reads the actual card entry when narrating — previously improvised from name alone
+- Ghost card rendering fixed — no more duplicate "Add character" button after sheet generation
+- Multiplayer opening notification spam fixed — no more false "caller not found" on story start
+- Pending expiry fixed — multi-step ordinances no longer expire mid-execution
+- Second person damage detection fixed — "your" near damage word now correctly targets the caller
+- Config values now consistent across all hooks — debug mode and other config no longer reset mid-action
+
+### Technical
+- `act_` system — universal narrative action prefix replacing `iv_`. Extensible for future action types
+- `setPending()`, `clearPending()`, `tickPending()` — RIM pending state engine with auto-expiry
+- `CSMS_PENDING_KEYS` global registry — new modules register here, expiry handling automatic
+- `isModuleBusy()` — universal module collision guard
+- `setCharacterSheet(name, entry, keys, notes, del)` — unified card manager. All character sheet operations go through one function
+- `isMultiplayer()` — reliable multiplayer detection replacing raw `info.characters` check
+- `addToText()`, `setText()` — RIM text mutation helpers replacing scattered direct assignments
+- `awardXP()`, `processLevelUp()`, `autoSpendNPCDP()` — modular progression functions, callable from custom scripts
+
+---
+
 ## v1.9.0 — Inventory Command System
 *March 2026*
 
