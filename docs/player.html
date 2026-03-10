@@ -39,12 +39,13 @@ INT: 10 (+0)  WIS: 11 (+0)  CHA: 13 (+1)</code></pre>
     <p>The AI sees this card when writing your story. If your STR is 18, the AI knows you're incredibly strong. If your HP is low, the AI knows you're in danger.</p>
 
     <h2>Creating Your Character</h2>
-    <p>If the world maker added the <strong>Third Person</strong> plot component to the scenario, your sheet is created automatically — just rename yourself from "You" to your character's name in the game menu and your sheet appears on the next action.</p>
-    <p>If Third Person isn't set up, create your sheet manually:</p>
-    <pre><code>/csms create/YourName</code></pre>
+    <p>Your sheet is created automatically when you set your name. Open the player menu — the <strong>fire icon</strong> at the top left of the screen — and change your name from <strong>You</strong> to your character's name. On the next action, your sheet appears. This works in both single player and multiplayer.</p>
+    <p>If you prefer to create it manually instead:</p>
+    <pre><code>/csms create/YourName
+/csms create/John Smith</code></pre>
 
-    <div class="warning-box">
-      <strong>Single word names only.</strong> The script currently doesn't support multi-word names like "John Smith" — the second word gets cut off. Workaround: use a single name (<code>Nikolai</code>), a hyphenated name (<code>John-Smith</code>), or a title-name combo without spaces (<code>DrSmith</code>).
+    <div class="tip-box">
+      <strong>Full names work.</strong> <code>/csms create/John Smith</code> creates a character named John Smith. Just be consistent — always type the name exactly the same way when using commands later.
     </div>
 
     <h2>Editing Your Stats</h2>
@@ -119,16 +120,20 @@ I turn and act_throw the bottle at the guard.</code></pre>
     <p>See the <a href="inventory.html">full Inventory guide</a> for rules and tips.</p>
 
     <h2>Messages From CSMS</h2>
-    <p>CSMS communicates with you in two ways. Both are out-of-character — the AI ignores them entirely.</p>
+    <p>CSMS communicates with you using two formats. Both are visible to you and the AI — but the AI reads them as instructions rather than story content, so they never bleed into the narrative.</p>
 
-    <h3>[!NOTIFICATION!] brackets</h3>
-    <p>General messages — sheet created, stat rejected, level up, DP awarded, inventory updated:</p>
+    <h3>[Brackets] — notifications</h3>
+    <p>The AI treats content in <code>[brackets]</code> as writing annotations — meta-notes about the story, not part of it. CSMS uses this to send you information: sheet updates, level ups, rejected values, inventory changes:</p>
     <pre><code>[!NOTIFICATION!
 Nikolai leveled up to Level 4! Max HP increased to 22. You have 3 DP to spend.]</code></pre>
 
-    <h3>OOC: messages</h3>
-    <p>Step-by-step updates during active Ordinance or roll sequences — tells you what's happening and prompts you to Continue:</p>
+    <h3>OOC: — process steps</h3>
+    <p>The AI treats <code>##</code> as a direct instruction — a rule it must follow. CSMS uses this during active Ordinance and roll sequences to guide the AI through each step. You see these as <code>OOC:</code> messages, which tell you what's happening and prompt you to press Continue:</p>
     <pre><code>OOC: Rolling for "Flashing Shadow"... 1d20+DEX = [14] + DEX(+2) = 16. Press Continue to resolve.</code></pre>
+
+    <h3>Re-running a command</h3>
+    <p>When you type a command, CSMS processes it the moment you submit your input — before the AI generates anything. If you delete only the AI's response and press Continue, the command won't fire again, because Continue skips the input step entirely and goes straight to generating a new response.</p>
+    <p>To re-run a command, you need to delete both the AI's response <em>and</em> your original input, then retype your command and submit again.</p>
 
     <h2>Commands Cheat Sheet</h2>
 
