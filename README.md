@@ -9,7 +9,7 @@
 
 CSMS is a mechanics and character system for AI Dungeon. Ordinances, dice, inventory, combat, and progression — all in one script.
 
-For full documentation, guides, and examples — visit **[the website](https://nikolaif90.github.io/AIDCharacterSheet/)**.
+For full documentation, guides, and examples — visit **[the website](https://nikolaif90.github.io/AIDCharacterSheetandMechanicSystem/index.html)**.
 
 ---
 
