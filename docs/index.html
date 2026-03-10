@@ -50,6 +50,7 @@
       <h2>Not a rules engine.<br>A narrative foundation.</h2>
       <p>Most stat systems for AI Dungeon try to simulate a TTRPG. They tell the AI what to do, hardcode outcomes, and fight against the AI's creativity.</p>
       <p>CSMS takes the opposite approach. It gives the AI <em>just enough</em> mechanical context to make decisions feel earned — and then gets out of the way.</p>
+      <p>Every module is independent — use only what fits your adventure. Don't need leveling? Turn it off. Only want character sheets and dice? That works too. And when you want to tweak the numbers, the built-in config card lets you change everything live inside the game — no script editing, no computer required.</p>
       <div class="compare-grid">
         <div class="compare-col compare-bad">
           <div class="compare-label">Other systems</div>
@@ -106,7 +107,7 @@
         <div class="feature-card">
           <div class="feature-icon">⚔️</div>
           <h3>Ordinance System</h3>
-          <p>Named special abilities with real mechanical weight. The AI narrates freely — the script reads what happened and applies the consequences.</p>
+          <p>The core of CSMS. World makers write rules in plain language — combat techniques, signature moves, faction mechanics, anything. The AI interprets them. The script executes the numbers. Mechanics finally have real weight.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🎒</div>
@@ -138,25 +139,28 @@
         <div class="step">
           <div class="step-num">01</div>
           <div class="step-content">
-            <h3>Copy the Library</h3>
-            <p>Grab <code>library.js</code> from the GitHub repo and paste the entire contents into your scenario's <strong>Library</strong> tab.</p>
+            <h3>Copy the Scripts</h3>
+            <p>Grab the files from the GitHub repo and paste them into your scenario's script tabs:</p>
+            <ul>
+              <li><a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/blob/main/src/library.js" target="_blank"><code>library.js</code></a> → Library tab</li>
+              <li><a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/blob/main/src/input.js" target="_blank"><code>input.js</code></a> → Input tab</li>
+              <li><a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/blob/main/src/context.js" target="_blank"><code>context.js</code></a> → Context tab</li>
+              <li><a href="https://github.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/blob/main/src/output.js" target="_blank"><code>output.js</code></a> → Output tab</li>
+            </ul>
           </div>
         </div>
         <div class="step">
           <div class="step-num">02</div>
           <div class="step-content">
-            <h3>Add the Hooks</h3>
-            <p>Three lines, three tabs. Input, Context, Output. Each gets one call to <code>CSMS(hook)</code>.</p>
-            <pre><code>CSMS("input");  // Input tab
-CSMS("context"); // Context tab
-CSMS("output");  // Output tab</code></pre>
+            <h3>Configure (Optional)</h3>
+            <p>On first action, a <code>⚙️ CSMS CFG</code> card appears in your Story Cards. Edit it anytime to toggle modules, adjust XP rates, change heal values — all live, no script editing required.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">03</div>
           <div class="step-content">
             <h3>Create a Character</h3>
-            <p>In your adventure, type <code>/csms create YourName</code>. Your character sheet appears instantly.</p>
+            <p>If you added the <strong>Third Person</strong> plot component, your sheet is created automatically when you set your name. Otherwise, type <code>/csms create/YourName</code> to create it manually.</p>
           </div>
         </div>
         <div class="step">
