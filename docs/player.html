@@ -12,7 +12,6 @@
 
   <div class="noise"></div>
 
-
   <div class="page-header">
     <div class="container">
       <div class="section-tag">Documentation</div>
@@ -39,49 +38,24 @@ INT: 10 (+0)  WIS: 11 (+0)  CHA: 13 (+1)</code></pre>
 
     <p>The AI sees this card when writing your story. If your STR is 18, the AI knows you're incredibly strong. If your HP is low, the AI knows you're in danger.</p>
 
-    <h2>XP and Leveling</h2>
-    <p>If your world maker has leveling enabled, your character earns XP automatically through play — no manual tracking needed. XP is awarded for taking actions, rolling dice, dealing and receiving damage, executing Ordinances, learning, and landing killing blows.</p>
-    <p>When you level up, your max HP increases and you receive <strong>Development Points (DP)</strong>. Use them to grow your character your way:</p>
-    <pre><code>/csms dp/check              — see your available DP and current stats
-/csms dp/STR:2,DEX:1        — spend DP across stats in one command</code></pre>
-    <p>Unspent DP carries over — no pressure to spend immediately.</p>
-
-    <h2>Action Commands</h2>
-    <p>Some actions trigger mechanics automatically when you include them in your input. No slashes, no menus — just describe what your character does:</p>
-
-    <table class="cmd-table">
-      <tr><th>What you type</th><th>What happens</th></tr>
-      <tr><td>act_rest</td><td>Character rests and recovers HP</td></tr>
-      <tr><td>act_eat, act_drink, act_consume</td><td>Consume something — restores HP</td></tr>
-      <tr><td>act_read, act_study, act_observe</td><td>Learn something — awards XP</td></tr>
-    </table>
-
-    <pre><code>I find a quiet corner and act_rest until morning.
-I sit down and act_eat the bread from my pack.
-I spend an hour act_reading the ancient tome.</code></pre>
-
-    <div class="tip-box">
-      <strong>The AI narrates naturally.</strong> The <code>act_</code> prefix is stripped before the AI sees your input. What the AI reads is clean prose. The mechanics happen silently behind the scenes.
-    </div>
-
     <h2>Creating Your Character</h2>
-    <p>If your world maker hasn't set up automatic character creation, you'll need to create your sheet manually. Just type this anywhere in your adventure:</p>
-    <pre><code>/csms create YourName</code></pre>
-    <p>Replace <code>YourName</code> with your character's actual name. Your sheet will appear immediately.</p>
+    <p>If the world maker added the <strong>Third Person</strong> plot component to the scenario, your sheet is created automatically — just rename yourself from "You" to your character's name in the game menu and your sheet appears on the next action.</p>
+    <p>If Third Person isn't set up, create your sheet manually:</p>
+    <pre><code>/csms create/YourName</code></pre>
 
-    <div class="tip-box">
-      <strong>In multiplayer adventures with Third Person mode enabled, your sheet is created automatically when you rename yourself from "You" to your character's name. No command needed.</strong>
+    <div class="warning-box">
+      <strong>Single word names only.</strong> The script currently doesn't support multi-word names like "John Smith" — the second word gets cut off. Workaround: use a single name (<code>Nikolai</code>), a hyphenated name (<code>John-Smith</code>), or a title-name combo without spaces (<code>DrSmith</code>).
     </div>
 
     <h2>Editing Your Stats</h2>
-    <p>You can change any value on your sheet directly. Open the Story Cards panel, find your 📋 card, and click to edit it. Change any number you want, then just keep playing — the script will read your changes on the next action and update everything automatically.</p>
+    <p>You can change any value on your sheet directly. Open the Story Cards panel, find your 📋 card, and click to edit it. Change any number you want, then just keep playing — the script reads your changes on the next action automatically.</p>
 
     <div class="tip-box">
-      <strong>Want it to update right now?</strong> Type <code>/csms sync</code> after editing and your sheet will sync immediately.
+      <strong>Want it to update right now?</strong> Type <code>/csms update/stats/YourName</code> and your sheet syncs immediately.
     </div>
 
     <div class="warning-box">
-      <strong>Warning:</strong> If you type something that isn't a valid number (like letters), the script will reject that value and keep the old one. It'll notify you in brackets at the top of the next AI response.
+      <strong>Warning:</strong> If you type something that isn't a valid number, the script will reject that value and keep the old one. You'll see a notification telling you what was rejected.
     </div>
 
     <h2>What the Stats Mean</h2>
@@ -101,68 +75,91 @@ I spend an hour act_reading the ancient tome.</code></pre>
 
     <p>The number in brackets after each stat (like <code>+2</code> or <code>-1</code>) is your modifier — this is what actually gets applied to rolls and checks.</p>
 
-    <h2>Advanced Systems</h2>
-    <p>Depending on which modules your world maker has enabled, your adventure may include additional mechanics. Each has its own dedicated guide:</p>
+    <h2>XP and Leveling</h2>
+    <p>If your world maker has leveling enabled, your character earns XP automatically through play — no tracking needed. XP is awarded for taking actions, rolling dice, dealing and receiving damage, executing Ordinances, learning, and landing killing blows.</p>
+    <p>When you level up, your max HP increases and you receive <strong>Development Points (DP)</strong>. Spend them on the stats that matter to your build:</p>
+    <pre><code>/csms dp/check              — see your available DP and current stats
+/csms dp/STR:2,DEX:1        — spend DP across stats in one command</code></pre>
+    <p>Unspent DP carries over — no pressure to spend immediately.</p>
 
-    <div class="features-grid" style="margin-top: 1.5rem;">
-      <div class="feature-card">
-        <div class="feature-icon">🎒</div>
-        <h3>Inventory System</h3>
-        <p>Pick up, drop, give, and throw items using natural language commands. Your character sheet tracks everything automatically.</p>
-        <a href="inventory.html" style="color: var(--gold); font-family: var(--font-mono); font-size: 0.85rem;">Full Inventory Guide →</a>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">⚔️</div>
-        <h3>Ordinance System</h3>
-        <p>Execute named special abilities — combat techniques, signature moves, unique skills — with real mechanical consequences.</p>
-        <a href="ordinance.html" style="color: var(--gold); font-family: var(--font-mono); font-size: 0.85rem;">Full Ordinance Guide →</a>
-      </div>
+    <h2>Action Commands</h2>
+    <p>Some actions trigger mechanics automatically. Add an <code>act_</code> prefix before the action in your input — the prefix is stripped before the AI ever sees it, so the story reads naturally:</p>
+
+    <table class="cmd-table">
+      <tr><th>What you type</th><th>What happens</th></tr>
+      <tr><td>act_rest</td><td>Recover HP</td></tr>
+      <tr><td>act_eat, act_drink, act_consume</td><td>Consume something — restores HP</td></tr>
+      <tr><td>act_read, act_study, act_observe</td><td>Learn something — awards XP</td></tr>
+    </table>
+
+    <pre><code>I find a quiet corner and act_rest until morning.
+I sit down and act_eat the bread from my pack.
+I spend an hour act_reading the ancient tome.</code></pre>
+
+    <h2>Inventory</h2>
+    <p>If inventory is enabled, you can pick up, drop, give, and throw items using the same <code>act_</code> system:</p>
+
+    <table class="cmd-table">
+      <tr><th>What you type</th><th>What happens</th></tr>
+      <tr><td>act_take / act_grab</td><td>Pick up an item</td></tr>
+      <tr><td>act_drop / act_discard</td><td>Remove an item from your inventory</td></tr>
+      <tr><td>act_give / act_hand</td><td>Transfer an item to another character</td></tr>
+      <tr><td>act_throw / act_hurl</td><td>Throw an item, optional target</td></tr>
+    </table>
+
+    <pre><code>I walk over and act_grab the briefcase.
+act_give the documents to Sarah.
+I act_drop the wallet on the floor.
+I turn and act_throw the bottle at the guard.</code></pre>
+
+    <div class="warning-box">
+      <strong>Always use the character's name — never pronouns.</strong> <code>act_give her the files</code> will fail. <code>act_give files to Sarah</code> works. You can only give to or take from characters with a 📋 sheet.
     </div>
 
-    <h2>Notifications</h2>
-    <p>Sometimes you'll see a message in brackets at the top of an AI response, like:</p>
+    <p>See the <a href="inventory.html">full Inventory guide</a> for rules and tips.</p>
+
+    <h2>Messages From CSMS</h2>
+    <p>CSMS communicates with you in two ways. Both are out-of-character — the AI ignores them entirely.</p>
+
+    <h3>[!NOTIFICATION!] brackets</h3>
+    <p>General messages — sheet created, stat rejected, level up, DP awarded, inventory updated:</p>
     <pre><code>[!NOTIFICATION!
-Your character sheet has been updated.]</code></pre>
-    <p>This is CSMS talking to you. The AI ignores these brackets — they're purely for you. You might see notifications when:</p>
-    <ul>
-      <li>Your character sheet is created or updated</li>
-      <li>A stat value you entered was invalid</li>
-      <li>A new character sheet was auto-generated</li>
-      <li>Something was synced or reset</li>
-    </ul>
+Nikolai leveled up to Level 4! Max HP increased to 22. You have 3 DP to spend.]</code></pre>
+
+    <h3>OOC: messages</h3>
+    <p>Step-by-step updates during active Ordinance or roll sequences — tells you what's happening and prompts you to Continue:</p>
+    <pre><code>OOC: Rolling for "Flashing Shadow"... 1d20+DEX = [14] + DEX(+2) = 16. Press Continue to resolve.</code></pre>
 
     <h2>Commands Cheat Sheet</h2>
-    <p>You can type these anywhere in your adventure input:</p>
 
     <table class="cmd-table">
       <tr><th>Command</th><th>What it does</th></tr>
-      <tr><td>/csms create [name]</td><td>Create a new character sheet</td></tr>
-      <tr><td>/csms stats</td><td>Refresh your character sheet display</td></tr>
-      <tr><td>/csms stats [name]</td><td>Refresh a specific character's sheet</td></tr>
-      <tr><td>/csms sync</td><td>Force sync your card edits right now</td></tr>
-      <tr><td>/csms sync [name]</td><td>Force sync a specific character's card</td></tr>
+      <tr><td>/csms create/Name</td><td>Create a new character sheet</td></tr>
+      <tr><td>/csms check/Name</td><td>Refresh a character sheet display</td></tr>
+      <tr><td>/csms update/stats/Name</td><td>Force sync your card edits to state right now</td></tr>
+      <tr><td>/csms dp/check</td><td>See your available DP and current stats</td></tr>
+      <tr><td>/csms dp/STR:2,INT:1</td><td>Spend DP across stats</td></tr>
+      <tr><td>/csms reset/pending</td><td>Clear a stuck Ordinance or roll process</td></tr>
     </table>
-
-    <div class="tip-box">
-      <strong>Multiplayer note:</strong> In multiplayer, <code>/csms stats</code> and <code>/csms sync</code> with no name always affect <em>your</em> character — the one whose name matches your current input.
-    </div>
 
     <h2>Frequently Asked Questions</h2>
 
     <h3>My sheet disappeared. What do I do?</h3>
-    <p>Type <code>/csms stats</code> to refresh it. If it's truly gone, type <code>/csms create YourName</code> to recreate it. Your stats will reset to defaults, so you'll need to edit them back.</p>
+    <p>Type <code>/csms check/YourName</code> to refresh it. If it's truly gone, type <code>/csms create/YourName</code> to recreate it — your stats will reset to defaults, so you'll need to edit them back.</p>
 
     <h3>Can I set my stats to whatever I want?</h3>
-    <p>Yes — CSMS doesn't judge. The world maker may have set a maximum value (default is 50), but within that range, you're free to set anything. Whether the AI respects those stats in the story is up to the world maker's scenario design.</p>
+    <p>Yes — CSMS doesn't judge. The world maker may have set a maximum value (default is 50), but within that range you're free to set anything. Whether the AI respects those stats in the story is up to the world maker's scenario design.</p>
 
     <h3>My stat edit isn't sticking. Why?</h3>
-    <p>Check that you entered a plain number — no letters, symbols, or spaces. If you get a notification saying a value was rejected, the old value was kept. Also make sure the format of the card line wasn't broken — the script reads values by position, so the structure needs to stay intact.</p>
+    <p>Check that you entered a plain number — no letters, symbols, or spaces. If you get a notification saying a value was rejected, the old value was kept. Also make sure the card structure wasn't accidentally broken — the script reads values by position, so the format needs to stay intact.</p>
 
     <h3>I see "STR:10 DEX:10..." appear in the story text. Is that a bug?</h3>
     <p>This can happen if the tag system is generating a character sheet and something interrupted the process. It should only happen once and won't affect your story. Just keep playing.</p>
 
-  </div>
+    <h3>I'm stuck mid-Ordinance and nothing's moving. What do I do?</h3>
+    <p>Type <code>/csms reset/pending</code> to clear the stuck process. Then retype your Ordinance command and try again.</p>
 
+  </div>
 
   <script src="components.js"></script>
 </body>
