@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commands — CSMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="noise"></div>
+
+
+  <div class="page-header">
+    <div class="container">
+      <div class="section-tag">Reference</div>
+      <h1>Commands</h1>
+      <p>All available CSMS commands. Type them anywhere in your adventure input.</p>
+    </div>
+  </div>
+
+  <div class="content-body">
+
+    <div class="tip-box">
+      <strong>How to use commands:</strong> Type any command directly into the adventure input field, the same way you'd type an action or dialogue. CSMS detects the command automatically — you don't need to be on any special screen.
+    </div>
+
+    <h2>Character Management</h2>
+
+    <table class="cmd-table">
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td>/csms create [name]</td><td>Creates a new character sheet. The first character created is the player. All subsequent characters are NPCs.</td></tr>
+      <tr><td>/csms stats</td><td>Refreshes your character sheet display.</td></tr>
+      <tr><td>/csms stats [name]</td><td>Refreshes a specific character's sheet.</td></tr>
+      <tr><td>/csms sync</td><td>Forces an immediate sync of your story card edits to state.</td></tr>
+      <tr><td>/csms sync [name]</td><td>Forces immediate sync for a specific character's card.</td></tr>
+    </table>
+
+    <h2>Development Points</h2>
+
+    <table class="cmd-table">
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td>/csms dp/check</td><td>Shows your available DP and current stats.</td></tr>
+      <tr><td>/csms dp/STR:2,INT:1</td><td>Spends DP across stats in one command. Any combination of stats works. Total DP spent must not exceed available DP.</td></tr>
+    </table>
+
+    <h2>Resetting</h2>
+
+    <table class="cmd-table">
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td>/csms reset/character/[name]</td><td>Removes a specific character's sheet entirely — both the story card and state data.</td></tr>
+      <tr><td>/csms reset/pending</td><td>Clears all active pending states. Use this if a multi-step process (roll, ordinance) gets stuck.</td></tr>
+      <tr><td>/csms cleanup</td><td>Removes orphaned 📋 story cards that no longer have matching character data.</td></tr>
+    </table>
+
+    <h2>Rolls</h2>
+
+    <table class="cmd-table">
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td>/csms roll [action]</td><td>Triggers a dice roll for the described action. AI determines the relevant stat. Script rolls. Result feeds back into the narrative.</td></tr>
+      <tr><td>/csms roll vs [name]</td><td>Opposed roll — both sides roll, higher wins, damage applied automatically.</td></tr>
+    </table>
+
+    <h2>Ordinance</h2>
+
+    <table class="cmd-table">
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td>/csms ordinance/Caller/Name/Target</td><td>Executes an Ordinance. Target is optional for non-damaging Ordinances.</td></tr>
+    </table>
+
+    <h2>Notes</h2>
+
+    <h3>Commands work anywhere in your input</h3>
+    <p>You can type a command as part of regular text and it will still be detected. For example:</p>
+    <pre><code>> You check your status. /csms stats</code></pre>
+    <p>Both the action and the command will work. The AI sees your action; CSMS intercepts the command.</p>
+
+    <h3>Names are case-insensitive</h3>
+    <p><code>/csms reset nikolai</code> and <code>/csms reset Nikolai</code> and <code>/csms reset NIKOLAI</code> all do the same thing.</p>
+
+    <h3>Punctuation is stripped from names</h3>
+    <p>If your input contains punctuation near the name (like quotation marks), CSMS strips it automatically. <code>/csms create "Diana"</code> creates a character named <code>Diana</code>, not <code>"Diana"</code>.</p>
+
+    <h3>Multiplayer behavior</h3>
+    <p>In multiplayer with Third Person mode:</p>
+    <ul>
+      <li><code>/csms stats</code> with no name shows <em>your</em> character, not necessarily the first character created</li>
+      <li><code>/csms sync</code> with no name syncs <em>your</em> character</li>
+      <li>Any player can create or reset any character — there are no ownership restrictions</li>
+    </ul>
+
+  </div>
+
+
+  <script src="components.js"></script>
+</body>
+</html>

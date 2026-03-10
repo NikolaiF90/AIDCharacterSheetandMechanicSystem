@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glossary — CSMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="noise"></div>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="section-tag">Reference</div>
+      <h1>Glossary</h1>
+      <p>Terms used throughout CSMS documentation and in-game notifications.</p>
+    </div>
+  </div>
+
+  <div class="content-body">
+
+    <h2>A</h2>
+
+    <h3>act_ prefix</h3>
+    <p>A keyword prefix placed before an action word in player input to trigger a mechanic. The prefix and keyword are stripped before the AI sees the input — the AI narrates naturally while the script tracks the mechanical consequence. Examples: <code>act_rest</code>, <code>act_eat</code>, <code>act_read</code>.</p>
+
+    <h3>Adventure</h3>
+    <p>An AI Dungeon story session. CSMS state persists across all actions within an adventure via AID's <code>state</code> object.</p>
+
+    ---
+
+    <h2>C</h2>
+
+    <h3>Caller</h3>
+    <p>The character executing an action or Ordinance. In Ordinance commands, the caller is the first argument: <code>/csms ordinance/Caller/OrdinanceName/Target</code>. CSMS detects the caller automatically from player input in multiplayer.</p>
+
+    <h3>Character Sheet</h3>
+    <p>A 📋 story card created and managed by CSMS for a character. Contains stats, HP, level, XP, proficiency, and links to inventory and ordinances in the Notes field.</p>
+
+    <h3>Config Card</h3>
+    <p>The <code>⚙️ CSMS CFG</code> story card. Auto-created on first action. World makers edit its Notes field to override config values live without touching the script.</p>
+
+    <h3>CSMS</h3>
+    <p>Character Sheet and Mechanics System. The script this documentation covers.</p>
+
+    ---
+
+    <h2>D</h2>
+
+    <h3>DAMAGING</h3>
+    <p>The Ordinance classification for moves that deal HP damage. The AI determines whether an Ordinance is DAMAGING or NONDAMAGING based on the card entry. DAMAGING Ordinances trigger a dice roll before narration, and the script scans the AI's output for damage words to apply HP.</p>
+
+    <h3>Development Points (DP)</h3>
+    <p>Points awarded to characters on level up. Players spend DP to increase stats via <code>/csms dp/STR:2,INT:1</code>. Unspent DP carries over. NPCs have DP auto-allocated by the script.</p>
+
+    ---
+
+    <h2>H</h2>
+
+    <h3>Hook</h3>
+    <p>One of three execution points in an AID script: Input (before the AI sees player text), Context (before the AI generates), Output (after the AI generates). CSMS runs logic in all three hooks depending on the operation.</p>
+
+    ---
+
+    <h2>I</h2>
+
+    <h3>iv_ prefix</h3>
+    <p>The legacy inventory prefix from v1.9.0. Replaced by <code>act_</code> in v2.0.0 as the universal action prefix. Both still work in v2.0.0.</p>
+
+    ---
+
+    <h2>M</h2>
+
+    <h3>Module</h3>
+    <p>A self-contained feature of CSMS that can be toggled on or off independently via the config. Current modules: CHARACTER_SHEETS, COMBAT, ORDINANCE, INVENTORY, LEVELING.</p>
+
+    ---
+
+    <h2>N</h2>
+
+    <h3>NONDAMAGING</h3>
+    <p>The Ordinance classification for moves that don't deal direct HP damage — buffs, utility, focus techniques, social maneuvers. A roll may still be involved depending on the Ordinance entry, but no damage scan is performed.</p>
+
+    <h3>NotifyThem</h3>
+    <p>The notification system bundled with CSMS. Outputs bracketed messages to the player after each action. The AI ignores brackets — notifications are purely player-facing. Built as a standalone system, usable independently of CSMS.</p>
+
+    ---
+
+    <h2>O</h2>
+
+    <h3>Ordinance</h3>
+    <p>A named special ability or technique defined as a story card by the world maker. Executed via <code>/csms ordinance/</code> command. The script feeds the card entry to the AI, rolls dice, reads the narrative output, and applies mechanical consequences. See the <a href="ordinance.html">Ordinance guide</a>.</p>
+
+    ---
+
+    <h2>P</h2>
+
+    <h3>Pending State</h3>
+    <p>A tracked multi-step operation in progress. Ordinance execution and roll resolution both use pending states to track which step they're on across multiple AI responses. Pending states auto-expire if a step doesn't advance after a configured number of actions.</p>
+
+    <h3>Proficiency Bonus</h3>
+    <p>A bonus applied to certain rolls and checks, increasing as the character levels up. Thresholds are configurable via <code>PROFICIENCY_THRESHOLDS</code> in config.</p>
+
+    ---
+
+    <h2>S</h2>
+
+    <h3>Seat</h3>
+    <p>An index position in the <code>state.csmsPlayers</code> array. Each multiplayer player occupies a seat. Used to track identity across name changes.</p>
+
+    <h3>Story Card</h3>
+    <p>A persistent card in AI Dungeon that injects content into the AI's context when triggered by keywords. CSMS uses story cards for character sheets, config, debug log, and Ordinances.</p>
+
+    ---
+
+    <h2>T</h2>
+
+    <h3>Tag System</h3>
+    <p>Adding <code>[CSMS]</code> to a story card title to mark it for automatic sheet generation. When the character appears in story history, CSMS generates a sheet from the card's description. See the <a href="modules.html">Modules page</a>.</p>
+
+    <h3>Target</h3>
+    <p>The character on the receiving end of an Ordinance. Optional for NONDAMAGING Ordinances. Must have a 📋 character sheet to receive damage.</p>
+
+    ---
+
+    <h2>W</h2>
+
+    <h3>World Maker</h3>
+    <p>The person who sets up and configures a CSMS-powered AI Dungeon scenario. Responsible for installing the script, writing Ordinance cards, configuring modules, and designing the adventure. Distinct from the player who plays in it.</p>
+
+    ---
+
+    <h2>X</h2>
+
+    <h3>XP (Experience Points)</h3>
+    <p>Points awarded automatically through play. When XP reaches the <code>XP_THRESHOLD</code>, the character levels up. Sources and amounts are individually configurable. See the <a href="modules.html#leveling">Leveling module</a>.</p>
+
+  </div>
+
+  <script src="components.js"></script>
+</body>
+</html>

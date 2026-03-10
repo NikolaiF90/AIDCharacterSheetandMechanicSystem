@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Milestones — CSMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .milestones-content h2 {
+      color: var(--gold);
+      font-size: 1.3rem;
+      margin: 2.5rem 0 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .milestones-content h3 {
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin: 1.5rem 0 0.5rem;
+    }
+    .milestones-content ul { margin-bottom: 0.5rem; }
+    .milestones-content li { font-size: 0.95rem; }
+    .milestones-content em { color: var(--text-muted); font-size: 0.85rem; }
+    .loading {
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      padding: 2rem 0;
+    }
+    .loading::after {
+      content: '...';
+      animation: dots 1.5s infinite;
+    }
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="noise"></div>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="section-tag">Project</div>
+      <h1>Milestones</h1>
+      <p>Every phase of CSMS development, from foundation to current.</p>
+    </div>
+  </div>
+
+  <div class="content-body">
+    <div id="milestones-output">
+      <p class="loading">Fetching milestones</p>
+    </div>
+  </div>
+
+  <script>
+    const RAW_URL = "https://raw.githubusercontent.com/NikolaiF90/AIDCharacterSheetandMechanicSystem/refs/heads/main/assets/Milestones.MD";
+
+    function parseMarkdown(md)
+    {
+      return md
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/^- \[x\] (.+)$/gm, '<li>✓ $1</li>')
+        .replace(/^- \[ \] (.+)$/gm, '<li style="color:var(--text-muted)">○ $1</li>')
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`)
+        .replace(/^---$/gm, '<hr style="border-color: var(--border); margin: 2rem 0;">')
+        .replace(/^(?!<[hul]|<li|<hr)(.+)$/gm, '<p>$1</p>')
+        .replace(/<p>\s*<\/p>/g, '');
+    }
+
+    fetch(RAW_URL)
+      .then(res =>
+      {
+        if (!res.ok) throw new Error("Failed to fetch");
+        return res.text();
+      })
+      .then(md =>
+      {
+        const html = parseMarkdown(md);
+        document.getElementById("milestones-output").innerHTML = `<div class="milestones-content">${html}</div>`;
+      })
+      .catch(() =>
+      {
+        document.getElementById("milestones-output").innerHTML =
+          `<p style="color: var(--text-muted)">Could not load milestones. <a href="${RAW_URL.replace('raw.githubusercontent.com','github.com').replace('/refs/heads/main', '/blob/main')}" target="_blank">View on GitHub instead ↗</a></p>`;
+      });
+  </script>
+
+  <script src="components.js"></script>
+</body>
+</html>

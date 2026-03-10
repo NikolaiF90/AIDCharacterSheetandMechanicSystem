@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ordinance Library — CSMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .ordinance-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--gold-dim);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 2rem;
+      margin-bottom: 1.5rem;
+      transition: all 0.3s;
+    }
+    .ordinance-card:hover {
+      border-color: var(--gold-dim);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3), 0 0 20px var(--gold-glow);
+    }
+    .ordinance-name {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      color: var(--gold);
+      margin-bottom: 0.5rem;
+    }
+    .ordinance-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .ordinance-tag {
+      padding: 2px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+    .ordinance-tag.damaging {
+      color: var(--red);
+      border-color: rgba(201, 76, 76, 0.3);
+      background: rgba(201, 76, 76, 0.08);
+    }
+    .ordinance-tag.nondamaging {
+      color: var(--green);
+      border-color: rgba(76, 175, 125, 0.3);
+      background: rgba(76, 175, 125, 0.08);
+    }
+    .ordinance-entry {
+      font-size: 0.95rem;
+      color: var(--text-dim);
+      font-style: italic;
+      border-left: 2px solid var(--border);
+      padding-left: 1rem;
+      margin-bottom: 1rem;
+      line-height: 1.6;
+    }
+    .ordinance-credit {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .submit-box {
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold-dim);
+      border-radius: var(--radius);
+      padding: 1.5rem 2rem;
+      margin: 3rem 0;
+    }
+    .submit-box h3 {
+      color: var(--gold);
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="noise"></div>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="section-tag">Community</div>
+      <h1>Ordinance Library</h1>
+      <p>A curated collection of ready-to-use Ordinances. Drop them into your scenario and start playing.</p>
+    </div>
+  </div>
+
+  <div class="content-body">
+
+    <div class="tip-box">
+      <strong>How to use these.</strong> Copy the Name and Entry into a new story card. Set Type to Custom and type <code>Ordinance</code> in the field that appears. Add the name as a trigger keyword. That's it — the Ordinance is live in your scenario.
+    </div>
+
+    <h2>Combat</h2>
+
+    <div class="ordinance-card">
+      <div class="ordinance-name">Quick Strike</div>
+      <div class="ordinance-meta">
+        <span class="ordinance-tag damaging">DAMAGING</span>
+        <span class="ordinance-tag">No target required: No</span>
+      </div>
+      <div class="ordinance-entry">
+        A lightning-fast strike delivered before the opponent can react. Prioritizes speed over power — relies on the element of surprise rather than brute force.
+      </div>
+      <div class="ordinance-credit">Submitted by: PrinceF90</div>
+    </div>
+
+    <div class="ordinance-card">
+      <div class="ordinance-name">Flashing Shadow</div>
+      <div class="ordinance-meta">
+        <span class="ordinance-tag damaging">DAMAGING</span>
+        <span class="ordinance-tag">No target required: No</span>
+      </div>
+      <div class="ordinance-entry">
+        An explosive burst of movement — closes distance instantly, evades into the target's blind spot, and delivers a concentrated strike before they can reorient. High risk, high reward. If the roll fails, the caller is left exposed and vulnerable.
+      </div>
+      <div class="ordinance-credit">Submitted by: PrinceF90</div>
+    </div>
+
+    <div class="ordinance-card">
+      <div class="ordinance-name">Incapacitating Juggler</div>
+      <div class="ordinance-meta">
+        <span class="ordinance-tag damaging">DAMAGING</span>
+        <span class="ordinance-tag">No target required: No</span>
+      </div>
+      <div class="ordinance-entry">
+        A sustained sequence of punches, kicks, and joint locks designed to overwhelm and immobilize. Ends in a pin or takedown. Damage is cumulative — each strike builds on the last. Difficult to escape once the sequence begins.
+      </div>
+      <div class="ordinance-credit">Submitted by: PrinceF90</div>
+    </div>
+
+    <h2>Utility</h2>
+
+    <div class="ordinance-card">
+      <div class="ordinance-name">Unwavering Focus</div>
+      <div class="ordinance-meta">
+        <span class="ordinance-tag nondamaging">NONDAMAGING</span>
+        <span class="ordinance-tag">No target required: Yes</span>
+      </div>
+      <div class="ordinance-entry">
+        The character clears their mind and centers themselves completely. Distractions fade. Fear subsides. For the next action, the character acts with absolute clarity — their next roll gains advantage regardless of circumstances.
+      </div>
+      <div class="ordinance-credit">Submitted by: PrinceF90</div>
+    </div>
+
+    <div class="submit-box">
+      <h3>Submit Your Ordinance</h3>
+      <p>Built something interesting? Share it with the community. Reach out on Discord — <strong>princef90</strong> — with your Ordinance name, entry text, and a note on what type it is. If it's clean and works well, it'll end up here.</p>
+    </div>
+
+  </div>
+
+  <script src="components.js"></script>
+</body>
+</html>
