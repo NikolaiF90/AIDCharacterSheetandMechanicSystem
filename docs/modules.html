@@ -16,115 +16,121 @@
     <div class="container">
       <div class="section-tag">Reference</div>
       <h1>Modules</h1>
-      <p>Every system in CSMS, in one place. Each module can be toggled independently.</p>
+      <p>Every system in CSMS, in one place. Each module can be toggled independently via the ⚙️ CSMS CFG card.</p>
     </div>
   </div>
 
   <div class="content-body">
 
     <h2>Character Sheets</h2>
-    <p>The foundation of everything. Every character — player or NPC — gets a 📋 story card tracking their stats, HP, level, XP, and proficiency. The AI sees a compact version of every active character's stats on every action.</p>
-    <p>Stats use D&D 5e as a base: STR, DEX, CON, INT, WIS, CHA. Each has a modifier calculated from the score. The card is editable directly from the Story Cards panel — the script validates and syncs automatically on the next action.</p>
+    <p>The foundation of everything. Every character — player or NPC — gets a 📋 story card tracking their stats, HP, level, XP, and proficiency. The AI sees a compact summary of every active character on every action.</p>
+    <p>Stats use D&D 5e as a base: STR, DEX, CON, INT, WIS, CHA. Each has a modifier calculated from the score. The card is editable directly from the Story Cards panel — the script validates and syncs on the next action.</p>
     <pre><code>Name: Nikolai | Level: 3 | XP: 450
 HP: 18/20 | AC: 15 | Speed: 30ft
 Proficiency: +2
 
 STR: 15 (+2)  DEX: 12 (+1)  CON: 14 (+2)
 INT: 10 (+0)  WIS: 11 (+0)  CHA: 13 (+1)</code></pre>
-    <p><strong>Toggle:</strong> <code>MODULE_LEVELING</code> controls XP/level display. Character sheets themselves are always on.</p>
+    <p><strong>Toggle:</strong> <code>MODULE_CHARACTER_SHEETS</code> — includes the tag system and AI context injection. This is the core module. Disabling it disables everything else.</p>
 
-    ---
+    <hr style="border-color: var(--border); margin: 3rem 0;">
 
     <h2>Tag System</h2>
-    <p>Add <code>[CSMS]</code> to the start of any story card title. When that character's name appears in recent story history, CSMS asks the AI to generate appropriate stats from the card's description — and creates a full character sheet automatically.</p>
-    <p>The tag is removed from the original card after generation. Your lore card stays intact. A separate 📋 sheet is created.</p>
-    <pre><code>Title:  [CSMS] Mira
-Entry:  Mira is a battle-hardened mercenary with fifteen years
-        of combat experience. Fast and agile, relies on speed
-        over strength. Completely unshakeable under pressure.</code></pre>
+    <p>Add <code>[CSMS]</code> to the start of any story card title. When that character's name appears in recent story history, CSMS asks the AI to generate appropriate stats from the card description and creates a full sheet automatically. The tag is removed from the original card — your lore card stays intact.</p>
+
+    <pre><code>Name:     [CSMS] Mira
+Type:     Character
+Entry:    Mira is a battle-hardened mercenary with fifteen years
+          of combat experience. Fast and agile, relies on speed
+          over strength. Completely unshakeable under pressure.
+Triggers: Mira, mercenary</code></pre>
+
     <div class="tip-box">
       <strong>Two-step render.</strong> On the first action after detection, a placeholder card appears. On the second action, real stats fill in. This is an AID rendering limitation — intentional behavior, not a bug.
     </div>
+    <p><strong>Toggle:</strong> Part of <code>MODULE_CHARACTER_SHEETS</code>.</p>
 
-    ---
+    <hr style="border-color: var(--border); margin: 3rem 0;">
 
     <h2>Roll System</h2>
-    <p>Dice rolls with stat modifiers. Supports standard roll notation, advantage, and disadvantage.</p>
-    <pre><code>/csms roll [action]        — AI determines stat, script rolls
-/csms roll vs Name         — opposed roll, higher wins, damage applied</code></pre>
-    <p>Flow: player inputs action → context hook asks AI for stat → output hook catches stat, resolves roll, injects narrative instruction → player sees roll breakdown in notification → Continue → AI narrates outcome.</p>
-    <p>XP is awarded to the winner of opposed rolls.</p>
-    <p><strong>Toggle:</strong> <code>MODULES.COMBAT</code></p>
+    <p>Dice rolls with stat modifiers. The AI determines the most relevant stat for the action — the script rolls, resolves the outcome, and injects the result back into the narrative.</p>
+    <pre><code>/csms roll/Caller/action
+/csms roll/Caller/action/Opponent</code></pre>
+    <p>Flow: player submits roll → context hook asks AI for the relevant stat → output hook catches the stat, resolves the roll, injects a narrative instruction → player sees the roll breakdown → Continue → AI narrates the outcome.</p>
+    <p>For opposed rolls, both sides roll. Higher wins. XP is awarded to the winner. If opponent is a character name with a sheet, their stats factor into the roll.</p>
+    <p><strong>Toggle:</strong> <code>MODULE_COMBAT</code></p>
 
-    ---
+    <hr style="border-color: var(--border); margin: 3rem 0;">
 
     <h2>Ordinance System</h2>
-    <p>Named special abilities written as story cards. The world maker writes the rules in plain language. The script executes, rolls dice, detects outcomes in AI narrative, and applies damage.</p>
+    <p>Named special abilities written as story cards. The world maker writes the rules in plain language — a combat technique, a signature move, a hacking method, anything. The script executes, rolls dice, detects outcomes in the AI's narrative, and applies real HP consequences.</p>
     <pre><code>/csms ordinance/Caller/OrdinanceName/Target</code></pre>
-    <p>Flow: classify (DAMAGING/NONDAMAGING) → roll if needed → AI narrates outcome → script reads narrative for damage words and applies HP. The ordinance card's entry is injected directly at narration step — AI reads the actual rules, not just the name.</p>
-    <p>Characters can be restricted to specific Ordinances via their <code>[Ordinances]</code> block. Empty block = access to all.</p>
-    <p><strong>Toggle:</strong> <code>MODULES.ORDINANCE</code> — see the <a href="ordinance.html">full Ordinance guide</a>.</p>
+    <p>Flow: classify (DAMAGING or NONDAMAGING) → roll if needed → AI narrates freely using the ordinance card entry as its instructions → script scans narrative for damage-tier words → HP applied to caller, target, or both depending on what the AI wrote.</p>
+    <p>Characters can be restricted to specific Ordinances via their <code>[Ordinances]</code> block. An empty block means access to all ordinances in the scenario.</p>
+    <p><strong>Toggle:</strong> <code>MODULE_ORDINANCE</code> — see the <a href="ordinance.html">full Ordinance guide</a>.</p>
 
-    ---
+    <hr style="border-color: var(--border); margin: 3rem 0;">
 
     <h2>Inventory System</h2>
-    <p>Item tracking per character, stored in the character sheet Notes field. Pick up, drop, give, throw — using natural <code>act_</code> prefixed input.</p>
+    <p>Item tracking per character, stored in the <code>[Inventory]</code> block of the character sheet. Pick up, drop, give, throw — using natural <code>act_</code> prefixed input. The prefix is stripped before the AI sees anything.</p>
     <pre><code>I walk over and act_grab the briefcase.
 act_give the documents to Sarah.
+act_drop the wallet on the floor.
 I turn and act_throw the bottle at the guard.</code></pre>
-    <p>Items live in the <code>[Inventory]</code> block of the character sheet. Editable directly. Synced automatically.</p>
-    <p><strong>Toggle:</strong> <code>MODULES.INVENTORY</code> — see the <a href="inventory.html">full Inventory guide</a>.</p>
+    <p>Items are editable directly in the story card. Synced automatically on the next action.</p>
+    <p><strong>Toggle:</strong> <code>MODULE_INVENTORY</code> — see the <a href="inventory.html">full Inventory guide</a>.</p>
 
-    ---
+    <hr style="border-color: var(--border); margin: 3rem 0;">
 
     <h2>Leveling System</h2>
-    <p>Automatic XP tracking and level progression. XP is awarded passively every action, and additionally for rolls, combat, Ordinances, and learning. On level up: max HP increases, Development Points (DP) are awarded, proficiency may increase.</p>
+    <p>Automatic XP tracking and level progression. XP accumulates passively and through specific actions. On level up: max HP increases by <code>HP_PER_LEVEL</code>, Development Points are awarded, and proficiency may increase depending on configured thresholds.</p>
 
     <table class="cmd-table">
-      <tr><th>XP Source</th><th>Config Key</th></tr>
-      <tr><td>Per action taken</td><td>XP_PER_ACTION</td></tr>
-      <tr><td>Per ordinance executed</td><td>XP_PER_ORDINANCE</td></tr>
-      <tr><td>Per successful roll</td><td>XP_PER_ROLL_SUCCESS</td></tr>
-      <tr><td>Per failed roll</td><td>XP_PER_ROLL_FAIL</td></tr>
-      <tr><td>Per damage dealt</td><td>XP_PER_HIT</td></tr>
-      <tr><td>Per damage received</td><td>XP_PER_DAMAGE_RECEIVED</td></tr>
-      <tr><td>Per killing blow</td><td>XP_PER_KILL</td></tr>
-      <tr><td>Per learn action</td><td>XP_PER_LEARN</td></tr>
+      <tr><th>XP Source</th><th>Config Key</th><th>Default</th></tr>
+      <tr><td>Per action taken</td><td>XP_PER_ACTION</td><td>1</td></tr>
+      <tr><td>Per ordinance executed</td><td>XP_PER_ORDINANCE</td><td>5</td></tr>
+      <tr><td>Per successful roll</td><td>XP_PER_ROLL_SUCCESS</td><td>3</td></tr>
+      <tr><td>Per failed roll</td><td>XP_PER_ROLL_FAIL</td><td>1</td></tr>
+      <tr><td>Per damage dealt</td><td>XP_PER_HIT</td><td>3</td></tr>
+      <tr><td>Per damage received</td><td>XP_PER_DAMAGE_RECEIVED</td><td>2</td></tr>
+      <tr><td>Per killing blow</td><td>XP_PER_KILL</td><td>10</td></tr>
+      <tr><td>Per learn action</td><td>XP_PER_LEARN</td><td>5</td></tr>
     </table>
 
-    <p>Set any source to 0 to disable it. NPCs level up too — DP is auto-allocated on their behalf.</p>
+    <p>Set any source to <code>0</code> to disable it. NPCs level up too — DP is auto-allocated on their behalf.</p>
     <pre><code>/csms dp/check              — see available DP and current stats
 /csms dp/STR:2,INT:1        — spend DP across stats in one command</code></pre>
-    <p><strong>Toggle:</strong> <code>MODULES.LEVELING</code></p>
+    <p><strong>Toggle:</strong> <code>MODULE_LEVELING</code></p>
 
-    ---
+    <hr style="border-color: var(--border); margin: 3rem 0;">
 
     <h2>Action System</h2>
-    <p>Natural language mechanics triggered by <code>act_</code> prefixed keywords in player input. The prefix is stripped before the AI sees anything — the AI narrates freely, the script tracks the consequence.</p>
+    <p>Natural language mechanics triggered by <code>act_</code> prefixed keywords. Part of the Inventory and Leveling modules — no separate toggle. The prefix and keyword are stripped before the AI sees the input, so the story reads naturally.</p>
 
     <table class="cmd-table">
       <tr><th>Action</th><th>Keywords</th><th>Effect</th></tr>
-      <tr><td>Rest</td><td>act_rest</td><td>Restores REST_HEAL_PERCENT% max HP</td></tr>
-      <tr><td>Consume</td><td>act_eat, act_drink, act_consume, act_use, act_swallow, act_pop, act_apply</td><td>Restores CONSUME_HEAL_PERCENT% max HP</td></tr>
-      <tr><td>Learn</td><td>act_read, act_study, act_observe, act_investigate, act_examine, act_inspect, act_analyze, act_scan</td><td>Awards XP_PER_LEARN XP</td></tr>
+      <tr><td>Rest</td><td>act_rest</td><td>Restores <code>REST_HEAL_PERCENT</code>% of max HP</td></tr>
+      <tr><td>Consume</td><td>act_eat, act_drink, act_consume, act_use, act_swallow, act_pop, act_apply</td><td>Restores <code>CONSUME_HEAL_PERCENT</code>% of max HP</td></tr>
+      <tr><td>Learn</td><td>act_read, act_study, act_observe, act_investigate, act_examine, act_inspect, act_analyze, act_scan</td><td>Awards <code>XP_PER_LEARN</code> XP</td></tr>
     </table>
 
-    ---
+    <hr style="border-color: var(--border); margin: 3rem 0;">
 
     <h2>Debug UI</h2>
-    <p>A persistent debug log card — <code>🔧 CSMS DEBUG</code> — visible in your Story Cards panel. Enable via <code>DEBUG_MODE: true</code> in your config card. The log buffers in state and flushes every output hook.</p>
-    <p>Debug card supports commands in its Notes field:</p>
+    <p>A persistent debug log card — <code>🔧 CSMS DEBUG</code> — visible in your Story Cards panel. Only active when <code>DEBUG_MODE: true</code> in the CFG card. The log buffers in state and flushes on every output hook.</p>
+    <p>To run a debug command, type it into the <strong>Entry</strong> field of the debug card and take an action:</p>
 
     <table class="cmd-table">
       <tr><th>Command</th><th>Effect</th></tr>
-      <tr><td>CLEAR_LOG</td><td>Wipes the debug log</td></tr>
+      <tr><td>CLEAR LOG</td><td>Wipes the debug log</td></tr>
       <tr><td>CLEAR:ordinance</td><td>Clears the ordinance pending state</td></tr>
       <tr><td>CLEAR:roll</td><td>Clears the roll pending state</td></tr>
-      <tr><td>SET:path=value</td><td>Sets a whitelisted state path directly — e.g. SET:csmsPending.ordinance.step=3</td></tr>
+      <tr><td>SET:csmsPending.ordinance.step=N</td><td>Manually sets the ordinance step to N</td></tr>
+      <tr><td>SET:csmsPending.roll.step=N</td><td>Manually sets the roll step to N</td></tr>
     </table>
 
     <div class="tip-box">
-      <strong>Always disable before publishing.</strong> <code>DEBUG_MODE: false</code> in your ⚙️ CSMS CFG card. Debug mode logs every action — useful for you, noise for players.
+      <strong>Always disable before publishing.</strong> Set <code>DEBUG_MODE: false</code> in your ⚙️ CSMS CFG card. Debug mode logs every action — useful while building, noise for players.
     </div>
 
   </div>
