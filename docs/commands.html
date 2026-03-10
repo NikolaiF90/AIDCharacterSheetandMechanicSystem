@@ -12,7 +12,6 @@
 
   <div class="noise"></div>
 
-
   <div class="page-header">
     <div class="container">
       <div class="section-tag">Reference</div>
@@ -24,18 +23,20 @@
   <div class="content-body">
 
     <div class="tip-box">
-      <strong>How to use commands:</strong> Type any command directly into the adventure input field, the same way you'd type an action or dialogue. CSMS detects the command automatically — you don't need to be on any special screen.
+      <strong>How to use commands:</strong> Type any command directly into the adventure input field, the same way you'd type an action or dialogue. CSMS detects and intercepts the command — you don't need to be on any special screen.<br><br>
+      <strong>Format:</strong> Arguments are separated by <code>/</code> — not spaces. For example: <code>/csms create/John Smith</code>, not <code>/csms create John Smith</code>.
     </div>
 
     <h2>Character Management</h2>
 
     <table class="cmd-table">
       <tr><th>Command</th><th>Description</th></tr>
-      <tr><td>/csms create [name]</td><td>Creates a new character sheet. The first character created is the player. All subsequent characters are NPCs.</td></tr>
-      <tr><td>/csms stats</td><td>Refreshes your character sheet display.</td></tr>
-      <tr><td>/csms stats [name]</td><td>Refreshes a specific character's sheet.</td></tr>
-      <tr><td>/csms sync</td><td>Forces an immediate sync of your story card edits to state.</td></tr>
-      <tr><td>/csms sync [name]</td><td>Forces immediate sync for a specific character's card.</td></tr>
+      <tr><td>/csms create/Name</td><td>Creates a new character sheet. The first character created becomes the player. All subsequent characters are NPCs. Full names with spaces work — <code>/csms create/John Smith</code> is valid.</td></tr>
+      <tr><td>/csms check</td><td>Refreshes your own character sheet display.</td></tr>
+      <tr><td>/csms check/Name</td><td>Refreshes a specific character's sheet by name.</td></tr>
+      <tr><td>/csms update/stats</td><td>Force-syncs your story card edits to state right now instead of waiting for the next action.</td></tr>
+      <tr><td>/csms update/stats/Name</td><td>Force-syncs a specific character's card.</td></tr>
+      <tr><td>/csms update/notes/Name</td><td>Re-parses a character's inventory and ordinance blocks from their sheet notes.</td></tr>
     </table>
 
     <h2>Development Points</h2>
@@ -43,56 +44,52 @@
     <table class="cmd-table">
       <tr><th>Command</th><th>Description</th></tr>
       <tr><td>/csms dp/check</td><td>Shows your available DP and current stats.</td></tr>
-      <tr><td>/csms dp/STR:2,INT:1</td><td>Spends DP across stats in one command. Any combination of stats works. Total DP spent must not exceed available DP.</td></tr>
+      <tr><td>/csms dp/STR:2,INT:1</td><td>Spends DP across stats in one command. Any combination of stats works. Total spent must not exceed available DP.</td></tr>
     </table>
 
     <h2>Resetting</h2>
 
     <table class="cmd-table">
       <tr><th>Command</th><th>Description</th></tr>
-      <tr><td>/csms reset/character/[name]</td><td>Removes a specific character's sheet entirely — both the story card and state data.</td></tr>
-      <tr><td>/csms reset/pending</td><td>Clears all active pending states. Use this if a multi-step process (roll, ordinance) gets stuck.</td></tr>
-      <tr><td>/csms cleanup</td><td>Removes orphaned 📋 story cards that no longer have matching character data.</td></tr>
+      <tr><td>/csms reset/character/Name</td><td>Removes a specific character's sheet entirely — both the story card and all state data. Cannot be undone.</td></tr>
+      <tr><td>/csms reset/pending</td><td>Clears all active pending states. Use this if a roll or ordinance sequence gets stuck mid-process.</td></tr>
+      <tr><td>/csms cleanup</td><td>Removes orphaned 📋 story cards that no longer have matching character data in state.</td></tr>
     </table>
 
     <h2>Rolls</h2>
 
     <table class="cmd-table">
       <tr><th>Command</th><th>Description</th></tr>
-      <tr><td>/csms roll [action]</td><td>Triggers a dice roll for the described action. AI determines the relevant stat. Script rolls. Result feeds back into the narrative.</td></tr>
-      <tr><td>/csms roll vs [name]</td><td>Opposed roll — both sides roll, higher wins, damage applied automatically.</td></tr>
+      <tr><td>/csms roll/Caller/action</td><td>Triggers a dice roll. The AI determines the most relevant stat for the described action. Result feeds back into the narrative.</td></tr>
+      <tr><td>/csms roll/Caller/action/Opponent</td><td>Opposed roll — both sides roll, higher wins. If Opponent is a character with a sheet, their stats factor in. XP awarded to the winner.</td></tr>
     </table>
 
     <h2>Ordinance</h2>
 
     <table class="cmd-table">
       <tr><th>Command</th><th>Description</th></tr>
-      <tr><td>/csms ordinance/Caller/Name/Target</td><td>Executes an Ordinance. Target is optional for non-damaging Ordinances.</td></tr>
+      <tr><td>/csms ordinance/Caller/OrdinanceName/Target</td><td>Executes an Ordinance. Target is optional for non-damaging Ordinances. All three names must match existing character sheets (except Target on non-damaging).</td></tr>
     </table>
 
     <h2>Notes</h2>
 
     <h3>Commands work anywhere in your input</h3>
-    <p>You can type a command as part of regular text and it will still be detected. For example:</p>
-    <pre><code>> You check your status. /csms stats</code></pre>
-    <p>Both the action and the command will work. The AI sees your action; CSMS intercepts the command.</p>
+    <p>You can mix a command with regular text — both fire. The AI sees your prose; CSMS intercepts the command:</p>
+    <pre><code>I pause to take stock. /csms check</code></pre>
 
     <h3>Names are case-insensitive</h3>
-    <p><code>/csms reset nikolai</code> and <code>/csms reset Nikolai</code> and <code>/csms reset NIKOLAI</code> all do the same thing.</p>
+    <p><code>/csms check/nikolai</code> and <code>/csms check/Nikolai</code> both work. Just be consistent with spacing — <code>John Smith</code> and <code>john smith</code> match, but <code>JohnSmith</code> does not.</p>
 
-    <h3>Punctuation is stripped from names</h3>
-    <p>If your input contains punctuation near the name (like quotation marks), CSMS strips it automatically. <code>/csms create "Diana"</code> creates a character named <code>Diana</code>, not <code>"Diana"</code>.</p>
+    <h3>Punctuation is stripped</h3>
+    <p>Trailing punctuation like quotes and periods are stripped automatically from names. <code>/csms create/"Diana"</code> creates a character named <code>Diana</code>.</p>
 
-    <h3>Multiplayer behavior</h3>
-    <p>In multiplayer with Third Person mode:</p>
-    <ul>
-      <li><code>/csms stats</code> with no name shows <em>your</em> character, not necessarily the first character created</li>
-      <li><code>/csms sync</code> with no name syncs <em>your</em> character</li>
-      <li>Any player can create or reset any character — there are no ownership restrictions</li>
-    </ul>
+    <h3>Re-running a command</h3>
+    <p>Commands fire during the input step — before the AI generates anything. If you delete only the AI's response and press Continue, the command won't fire again. To re-run it, delete both the AI response and your original input, then retype and submit.</p>
+
+    <h3>Multiplayer</h3>
+    <p><code>/csms check</code> and <code>/csms update/stats</code> with no name always act on the character of the player who typed the command, not the first character created.</p>
 
   </div>
-
 
   <script src="components.js"></script>
 </body>
