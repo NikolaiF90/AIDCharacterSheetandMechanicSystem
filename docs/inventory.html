@@ -12,7 +12,6 @@
 
   <div class="noise"></div>
 
-
   <div class="page-header">
     <div class="container">
       <div class="section-tag">System Guide</div>
@@ -24,26 +23,26 @@
   <div class="content-body">
 
     <h2>What Is the Inventory System?</h2>
-    <p>The CSMS inventory system lets you pick up, drop, give, and throw items using natural language commands — no menus, no slashes, no clutter. Your character sheet automatically tracks what you're carrying, and the AI always knows what's in your hands.</p>
-    <p>Just prefix the inventory action in your input with <code>iv_</code> and the script handles the rest.</p>
+    <p>The CSMS inventory system lets you pick up, drop, give, and throw items using natural language — no menus, no clutter. Your character sheet automatically tracks what you're carrying, and the AI always knows what's in your hands.</p>
+    <p>Prefix the action in your input with <code>act_</code> and the script handles the rest.</p>
 
     <div class="tip-box">
-      <strong>Immersion first.</strong> The <code>iv_</code> prefix is stripped from the story feed before the AI ever sees it. What the AI reads is natural prose — just like you wrote it without the prefix.
+      <strong>Immersion first.</strong> The <code>act_</code> prefix is stripped before the AI ever sees your input. What the AI reads is clean prose — exactly as you wrote it, just without the prefix.
     </div>
 
-    <h2>Basic Commands</h2>
-    <p>Add <code>iv_</code> directly before the inventory action in your input. Everything before and after is preserved — only the <code>iv_</code> part is stripped.</p>
+    <h2>Basic Usage</h2>
+    <p>Add <code>act_</code> directly before the action keyword anywhere in your input. Everything before and after is preserved.</p>
 
     <table class="cmd-table">
       <tr><th>What you type</th><th>What the AI sees</th></tr>
-      <tr><td><code>I walk over and iv_grab the briefcase.</code></td><td><code>I walk over and grab the briefcase.</code></td></tr>
-      <tr><td><code>iv_drop the knife on the floor.</code></td><td><code>drop the knife on the floor.</code></td></tr>
-      <tr><td><code>Alex iv_hand the folder to Marcus.</code></td><td><code>Alex hand the folder to Marcus.</code></td></tr>
-      <tr><td><code>I turn and iv_throw the bottle at the guard.</code></td><td><code>I turn and throw the bottle at the guard.</code></td></tr>
+      <tr><td><code>I walk over and act_grab the briefcase.</code></td><td><code>I walk over and grab the briefcase.</code></td></tr>
+      <tr><td><code>act_drop the knife on the floor.</code></td><td><code>drop the knife on the floor.</code></td></tr>
+      <tr><td><code>Alex act_hand the folder to Marcus.</code></td><td><code>Alex hand the folder to Marcus.</code></td></tr>
+      <tr><td><code>I turn and act_throw the bottle at the guard.</code></td><td><code>I turn and throw the bottle at the guard.</code></td></tr>
     </table>
 
     <h2>Keyword List</h2>
-    <p>Any of these words after <code>iv_</code> will trigger the inventory system:</p>
+    <p>Any of these words after <code>act_</code> will trigger the inventory system:</p>
 
     <table class="cmd-table">
       <tr><th>Action</th><th>Keywords</th><th>Effect</th></tr>
@@ -54,33 +53,33 @@
     </table>
 
     <h2>Taking From Another Character</h2>
-    <p>To take an item from a specific character, use <strong>from</strong> followed by their name:</p>
-    <pre><code>iv_take documents from Sarah
-iv_grab the keycard from the guard
-I reach over and iv_take the envelope from Marcus.</code></pre>
+    <p>Use <strong>from</strong> followed by their name:</p>
+    <pre><code>act_take documents from Sarah
+act_grab the keycard from the guard
+I reach over and act_take the envelope from Marcus.</code></pre>
 
     <div class="warning-box">
-      <strong>The character must have a 📋 sheet.</strong> You can only take items from characters tracked by CSMS. NPCs without a character sheet are not tracked — the script won't know what they're carrying.
+      <strong>The character must have a 📋 sheet.</strong> You can only take items from characters tracked by CSMS. NPCs without a sheet aren't tracked — the script won't know what they're carrying.
     </div>
 
     <h2>Giving to Another Character</h2>
     <p>Use <strong>to</strong> followed by their name. The item must be in your inventory first:</p>
-    <pre><code>iv_give the documents to Sarah
-I lean across the table and iv_hand the keycard to Marcus.</code></pre>
+    <pre><code>act_give the documents to Sarah
+I lean across the table and act_hand the keycard to Marcus.</code></pre>
 
     <div class="warning-box">
-      <strong>Always use the character's name — never pronouns.</strong> <code>iv_give her the files</code> will fail because "her" is not a character name. Use <code>iv_give files to Sarah</code> instead.
+      <strong>Always use the character's name — never pronouns.</strong> <code>act_give her the files</code> will fail. <code>act_give files to Sarah</code> works.
     </div>
 
     <h2>Throwing at a Target</h2>
-    <p>Use <strong>at</strong> followed by a character name, or throw with no target to just discard:</p>
-    <pre><code>iv_throw the bottle at Marcus
-iv_hurl the knife at the guard
-I pull the pin and iv_toss it away.</code></pre>
+    <p>Use <strong>at</strong> followed by a name, or throw with no target to discard:</p>
+    <pre><code>act_throw the bottle at Marcus
+act_hurl the knife at the guard
+I pull the pin and act_toss it away.</code></pre>
     <p>Throwing removes the item from your inventory regardless of whether it hits. The AI narrates what happens next.</p>
 
     <h2>Your Inventory on the Character Sheet</h2>
-    <p>Your character sheet's <strong>Notes</strong> field holds your inventory. It looks like this:</p>
+    <p>Your inventory lives in the <strong>Notes</strong> field of your 📋 card, inside the <code>[Inventory]</code> block:</p>
     <pre><code>[Inventory]
 - leather jacket
 - burner phone
@@ -101,9 +100,9 @@ I pull the pin and iv_toss it away.</code></pre>
 
     <table class="cmd-table">
       <tr><th>Situation</th><th>Recommendation</th></tr>
-      <tr><td>Items with numbers</td><td><code>P99-Pistol</code>, <code>Glock-17</code> — use hyphens to keep multi-word names together</td></tr>
+      <tr><td>Multi-word items</td><td><code>P99-Pistol</code>, <code>Glock-17</code> — hyphens keep the name together cleanly</td></tr>
       <tr><td>Multiple of the same item</td><td>Each appears as a separate line — <code>- knife</code> twice means two knives</td></tr>
-      <tr><td>Specific vs generic</td><td><code>iv_take knife</code> ≠ <code>iv_take sharp knife</code> — be consistent</td></tr>
+      <tr><td>Specific vs generic</td><td><code>act_take knife</code> ≠ <code>act_take sharp knife</code> — be consistent with naming</td></tr>
       <tr><td>Stacking notation</td><td><code>bottle x3</code> works as a name — but you must type it exactly each time</td></tr>
     </table>
 
@@ -111,7 +110,7 @@ I pull the pin and iv_toss it away.</code></pre>
     <p>If you try to drop, give, or throw something you're not carrying, the script replaces your input with a natural failure — the AI narrates the moment gracefully:</p>
 
     <pre><code>— You type —
-I walk to the desk and iv_drop the keycard.
+I walk to the desk and act_drop the keycard.
 
 — You don't have it, so the AI sees —
 I walk to the desk and reach for the keycard, but realize it isn't there.
@@ -121,33 +120,31 @@ Your hand moves to your jacket pocket out of habit, but comes up empty.
 The keycard isn't there. You stand at the desk, momentarily at a loss.</code></pre>
 
     <div class="tip-box">
-      <strong>Plans fail naturally.</strong> The input field is your character's intention. When the inventory check fails, the story reflects that — no immersion broken, no error messages cluttering the feed.
+      <strong>Plans fail naturally.</strong> The input field is your character's intention. When the check fails, the story reflects that — no immersion broken, no error messages in the feed.
     </div>
 
     <h2>Rules & Limitations</h2>
 
     <h3>One item at a time</h3>
-    <p>Each <code>iv_</code> command handles a single item. For multiple items, use separate inputs:</p>
-    <pre><code>iv_take Glock-17 from Marcus
-iv_take P99-Pistol from Marcus</code></pre>
+    <p>Each <code>act_</code> inventory command handles a single item. For multiple items, use separate inputs:</p>
+    <pre><code>act_take Glock-17 from Marcus
+act_take P99-Pistol from Marcus</code></pre>
 
-    <h3>One <code>iv_</code> per input</h3>
-    <p>Choose the one action that changes inventory. Everything else in your input is preserved as-is:</p>
-    <pre><code>I grab Marcus by the collar and iv_take his keycard. ✅
-iv_take the knife and tuck it into my belt. ✅
-iv_take the knife and iv_tuck it into my belt. ✅ (both fire — take + tuck = same item added twice ⚠️)</code></pre>
+    <h3>One inventory <code>act_</code> per input</h3>
+    <p>If you include two inventory actions in one input, both will fire:</p>
+    <pre><code>I grab Marcus by the collar and act_take his keycard. ✅
+act_take the knife and act_tuck it into my belt. ⚠️ (both fire — item added twice)</code></pre>
 
     <h3>Receiver must have a character sheet</h3>
-    <p>You can only give to or take from characters with a 📋 sheet. "The receptionist", "the clerk", "the guard" — if they don't have a sheet, they're not tracked.</p>
+    <p>You can only give to or take from characters with a 📋 sheet. Generic NPCs like "the guard" or "the clerk" aren't tracked unless a sheet exists for them.</p>
 
     <h3>No pronouns for receivers</h3>
-    <p><code>iv_give him the gun</code> will fail. <code>iv_give gun to Marcus</code> works. Always use the character's actual name.</p>
+    <p><code>act_give him the gun</code> will fail. <code>act_give gun to Marcus</code> works. Always use the character's actual name.</p>
 
     <h3>Location phrases are stripped automatically</h3>
-    <p><code>iv_drop wallet on the desk</code> — "on the desk" is stripped from the item name. What gets removed from inventory is "wallet", not "wallet on the desk".</p>
+    <p><code>act_drop wallet on the desk</code> — "on the desk" is stripped from the item name. What gets removed is "wallet", not "wallet on the desk".</p>
 
   </div>
-
 
   <script src="components.js"></script>
 </body>
