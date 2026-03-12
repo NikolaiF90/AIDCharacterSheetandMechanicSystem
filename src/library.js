@@ -1877,7 +1877,7 @@ function CSMS(hook)
       pending.rollResult = rollResult;
 
       pending.step = "3-ND";
-      addToTextText(`\nOOC: Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.\n\n`);
+      setText(`\nOOC: Rolling for "${pending.ordinanceName}"... ${rollResult.breakDown}. Press Continue to resolve.\n\n`);
 
       return;
     }
@@ -2822,5 +2822,10 @@ function CSMS(hook)
 
     setText(text || " ");
   }
-
 }
+
+// ===========================
+//
+// END OF CSMS
+//
+// ===========================
