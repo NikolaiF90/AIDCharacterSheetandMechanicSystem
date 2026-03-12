@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.0.1b — Bug Fix Patch
+
+**Fixed**
+- Fixed `addToTextText` typo in Ordinance step 2 DAMAGING — function didn't exist. Replaced with `setText` so the OOC rolling message replaces output cleanly.
+
+**Added**
+- End of script marker comment for better readability and easier script merging.
+
+---
+
 ## v2.0.0 — Combat, Progression & Action System
 *March 2026*
 
