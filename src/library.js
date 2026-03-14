@@ -1,6 +1,6 @@
 // ============================================
 // CSMS - Character Stats and Mechanics System
-// v2.0.0b by PrinceF90
+// v2.0.1b by PrinceF90
 // Visit https://github.com/NikolaiF90?tab=repositories
 // Include this header if you're using this script in your scenario
 // ============================================
